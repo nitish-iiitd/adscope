@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.campaign_name }} &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb small mb-1">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Results</li>
+      </ol>
+    </nav>
+    <h1 class="h4 fw-semibold mb-1">{{ campaign.campaign_name }}</h1>
+    <p class="text-muted small mb-0">{{ campaign.client_name }}</p>
+  </div>
+  <a href="/campaigns/new" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>New Campaign
+  </a>
+</div>
+
+{% if campaign.status == 'failed' %}
+  <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+    <i class="bi bi-exclamation-octagon-fill mt-1"></i>
+    <div>
+      <div class="fw-semibold">Analysis failed</div>
+      <div class="small">
+        Every AI provider failed for this campaign, so no recommendations could be generated.
+        Check the provider status below and try again.
+      </div>
+    </div>
+  </div>
+{% elif campaign.status == 'completed_with_warnings' %}
+  <div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+    <div>
+      <div class="fw-semibold">Completed with warnings</div>
+      <div class="small">
+        Some providers failed. Results below are based on the providers that responded.
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header bg-white fw-semibold py-3">Campaign briefing</div>
+      <div class="card-body">
+        <p class="briefing-text mb-0">{{ campaign.briefing }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header bg-white fw-semibold py-3">Analysis summary</div>
+      <div class="card-body">
+        <dl class="summary-list mb-0">
+          <dt>Target country</dt>
+          <dd>{{ campaign.target_country }}</dd>
+
+          {% if campaign.objective %}
+            <dt>Objective</dt>
+            <dd>{{ campaign.objective }}</dd>
+          {% endif %}
+          {% if campaign.budget %}
+            <dt>Budget</dt>
+            <dd>{{ campaign.budget }}</dd>
+          {% endif %}
+
+          <dt>Unique websites</dt>
+          <dd>{{ unique_websites }}</dd>
+
+          <dt>Analysis date</dt>
+          <dd>{{ (campaign.completed_at or campaign.created_at).strftime('%d %b %Y, %H:%M UTC') }}</dd>
+
+          <dt>Successful providers</dt>
+          <dd>
+            {% if successful_providers %}
+              {% for provider in successful_providers %}
+                <span class="badge text-bg-success text-capitalize me-1">{{ provider }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted small">None</span>
+            {% endif %}
+          </dd>
+
+          <dt>Failed providers</dt>
+          <dd>
+            {% if failed_providers %}
+              {% for provider in failed_providers %}
+                <span class="badge text-bg-danger text-capitalize me-1"
+                      title="{{ provider.error_message or 'Provider failed' }}">
+                  {{ provider.provider_name }}
+                </span>
+              {% endfor %}
+              <div class="text-muted small mt-1">Hover a badge for the reason.</div>
+            {% else %}
+              <span class="text-muted small">None</span>
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if rows %}
+  {% include "results.html" %}
+{% else %}
+  <div class="card">
+    <div class="card-body text-center p-5">
+      <div class="empty-icon mb-3"><i class="bi bi-search"></i></div>
+      <h2 class="h6 fw-semibold mb-1">No recommendations available</h2>
+      <p class="text-muted small mb-3">
+        This campaign did not produce any publisher recommendations.
+      </p>
+      <a href="/campaigns/new" class="btn btn-primary btn-sm">Try another briefing</a>
+    </div>
+  </div>
+{% endif %}
+
+<div class="alert alert-secondary d-flex align-items-start gap-2 mt-4 mb-0" role="note">
+  <i class="bi bi-info-circle-fill mt-1"></i>
+  <div class="small">
+    AI-generated recommendations are advisory. Website suitability, audience information, pricing,
+    availability, and brand safety must be verified by an authorised marketing professional before
+    campaign execution.
+  </div>
+</div>
+{% endblock %}

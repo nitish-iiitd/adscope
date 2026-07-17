@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}New campaign &middot; {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+    <div class="mb-4">
+      <h1 class="h4 fw-semibold mb-1">New campaign</h1>
+      <p class="text-muted small mb-0">
+        Describe the campaign. AdScope asks every configured AI model and merges the results.
+      </p>
+    </div>
+
+    {% if error %}
+      <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>{{ error }}</span>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="post" action="/campaigns" id="campaign-form" novalidate>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="client_name" class="form-label">Client name <span class="req">*</span></label>
+              <input type="text" class="form-control" id="client_name" name="client_name"
+                     maxlength="200" required value="{{ form.get('client_name', '') }}">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="campaign_name" class="form-label">Campaign name <span class="req">*</span></label>
+              <input type="text" class="form-control" id="campaign_name" name="campaign_name"
+                     maxlength="200" required value="{{ form.get('campaign_name', '') }}">
+            </div>
+
+            <div class="col-12">
+              <label for="briefing" class="form-label">Client briefing <span class="req">*</span></label>
+              <textarea class="form-control" id="briefing" name="briefing" rows="8" maxlength="5000"
+                        required placeholder="A premium organic skincare company wants to target women aged 25-40 in major Indian cities. The campaign objective is brand awareness. Recommend relevant websites and digital publishers where advertising may perform well.">{{ form.get('briefing', '') }}</textarea>
+              <div class="form-text">
+                Include audience, product category, positioning and any constraints. Minimum 20 characters.
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <label for="target_country" class="form-label">Target country <span class="req">*</span></label>
+              <input type="text" class="form-control" id="target_country" name="target_country"
+                     maxlength="100" required placeholder="India" value="{{ form.get('target_country', '') }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="objective" class="form-label">Campaign objective <span class="text-muted small">(optional)</span></label>
+              <input type="text" class="form-control" id="objective" name="objective"
+                     maxlength="200" placeholder="Brand awareness" value="{{ form.get('objective', '') }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="budget" class="form-label">Budget <span class="text-muted small">(optional)</span></label>
+              <input type="text" class="form-control" id="budget" name="budget"
+                     maxlength="100" placeholder="INR 20,00,000" value="{{ form.get('budget', '') }}">
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="submit" class="btn btn-primary" id="submit-btn">
+              <i class="bi bi-stars me-1"></i>Generate recommendations
+            </button>
+            <a href="/" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="loading-state" class="card mt-3 d-none">
+      <div class="card-body text-center p-5">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading</span>
+        </div>
+        <h2 class="h6 fw-semibold mb-1">Analysing the briefing</h2>
+        <p class="text-muted small mb-0">
+          Querying the AI models and merging their recommendations. This can take up to a minute.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

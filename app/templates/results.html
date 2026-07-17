@@ -1,0 +1,127 @@
+{# Recommendations table + per-recommendation provider modals. Included by campaign_detail.html. #}
+
+{% macro agreement_badge(agreement) -%}
+  {% if agreement == 'High' %}
+    <span class="badge text-bg-success">High</span>
+  {% elif agreement == 'Medium' %}
+    <span class="badge text-bg-info">Medium</span>
+  {% elif agreement == 'Single model' %}
+    <span class="badge text-bg-secondary">Single model</span>
+  {% else %}
+    <span class="badge text-bg-light border">Low</span>
+  {% endif %}
+{%- endmacro %}
+
+<div class="card">
+  <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+    <span class="fw-semibold">Recommended publishers</span>
+    <a href="/campaigns/{{ campaign.id }}/export.csv" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th style="width:60px">Rank</th>
+          <th>Website</th>
+          <th>Domain</th>
+          <th>Category</th>
+          <th style="width:110px">Final score</th>
+          <th style="width:90px">Models</th>
+          <th style="width:120px">Agreement</th>
+          <th>Main reason</th>
+          <th class="text-end" style="width:100px">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="text-muted">{{ loop.index }}</td>
+            <td class="fw-medium">{{ row.rec.website_name }}</td>
+            <td><span class="text-muted small">{{ row.rec.domain }}</span></td>
+            <td><span class="badge text-bg-light border fw-normal">{{ row.rec.category or '-' }}</span></td>
+            <td>
+              <span class="score-pill {{ 'score-high' if row.rec.final_score >= 80 else ('score-mid' if row.rec.final_score >= 60 else 'score-low') }}">
+                {{ '%g'|format(row.rec.final_score) }}
+              </span>
+            </td>
+            <td class="text-muted">{{ row.rec.model_count }}</td>
+            <td>{{ agreement_badge(row.rec.agreement) }}</td>
+            <td class="small text-muted reason-cell">{{ row.rec.combined_reason or '-' }}</td>
+            <td class="text-end">
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                      data-bs-toggle="modal" data-bs-target="#rec-{{ row.rec.id }}">
+                Details
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for row in rows %}
+  <div class="modal fade" id="rec-{{ row.rec.id }}" tabindex="-1"
+       aria-labelledby="rec-{{ row.rec.id }}-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0" id="rec-{{ row.rec.id }}-label">{{ row.rec.website_name }}</h5>
+            <span class="text-muted small">{{ row.rec.domain }}</span>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex flex-wrap gap-3 mb-4">
+            <div><div class="stat-label">Final score</div><div class="fw-semibold">{{ '%g'|format(row.rec.final_score) }}</div></div>
+            <div><div class="stat-label">Models recommending</div><div class="fw-semibold">{{ row.rec.model_count }}</div></div>
+            <div><div class="stat-label">Agreement</div><div>{{ agreement_badge(row.rec.agreement) }}</div></div>
+          </div>
+
+          {% for detail in row.details %}
+            <div class="provider-block mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold text-capitalize">{{ detail.provider_name }} assessment</span>
+                <span class="badge text-bg-light border text-capitalize">
+                  Confidence: {{ detail.confidence }}
+                </span>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6 col-md-3">
+                  <div class="stat-label">Score</div><div class="fw-medium">{{ '%g'|format(detail.score) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="stat-label">Audience match</div><div class="fw-medium">{{ '%g'|format(detail.audience_match_score) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="stat-label">Objective fit</div><div class="fw-medium">{{ '%g'|format(detail.objective_fit_score) }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="stat-label">Brand safety</div><div class="fw-medium">{{ '%g'|format(detail.brand_safety_score) }}</div>
+                </div>
+              </div>
+              <p class="small mb-1"><span class="text-muted">Reason:</span> {{ detail.short_reason or '-' }}</p>
+              <p class="small mb-0"><span class="text-muted">Concerns:</span> {{ detail.concerns or '-' }}</p>
+            </div>
+          {% endfor %}
+
+          {% set assessed = row.details | map(attribute='provider_name') | list %}
+          {% for provider in ['gemini', 'groq', 'openrouter'] %}
+            {% if provider in successful_providers and provider not in assessed %}
+              <p class="small text-muted mb-1">
+                <span class="text-capitalize">{{ provider }}</span> did not recommend this website.
+              </p>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endfor %}

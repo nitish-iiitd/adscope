@@ -1,0 +1,19 @@
+services:
+  adscope:
+    build: .
+    container_name: adscope
+    ports:
+      - "8000:8000"
+    env_file:
+      # Optional: the image falls back to demo-mode defaults when .env is absent.
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///./data/adscope.db}
+      DEMO_MODE: ${DEMO_MODE:-true}
+    volumes:
+      - adscope-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  adscope-data:
