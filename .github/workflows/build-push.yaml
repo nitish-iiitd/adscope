@@ -1,0 +1,67 @@
+name: Build and Push Image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: nitish2794/adscope
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Checkout deployment repo
+        uses: actions/checkout@v4
+        with:
+          repository: nitish-iiitd/my-vps-deployments
+          token: ${{ secrets.DEPLOYMENT_REPO_TOKEN }}
+          path: deployment-repo
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update image in Helm values
+        run: |
+          cd deployment-repo
+          yq -i '.image.tag = "sha-${{ github.sha }}"' apps/adscope/values.yaml
+
+      - name: Commit and push deployment change
+        run: |
+          cd deployment-repo
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add apps/adscope/values.yaml
+          git commit -m "Update adscope image to sha-${{ github.sha }}" || echo "No changes to commit"
+          git push
