@@ -29,6 +29,15 @@ def test_protected_route_redirects_to_login(client):
     assert response.headers["location"] == "/login"
 
 
+def test_pages_reference_static_assets_without_a_hardcoded_scheme(client):
+    """Absolute http:// asset URLs get blocked as mixed content behind a TLS proxy."""
+    body = client.get("/login").text
+
+    assert 'href="/static/css/app.css"' in body
+    assert 'src="/static/js/app.js"' in body
+    assert "http://testserver/static" not in body
+
+
 def test_health_is_public(client):
     response = client.get("/health")
     assert response.status_code == 200
