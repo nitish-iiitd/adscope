@@ -1,4 +1,4 @@
-{# Recommendations table + per-recommendation provider modals. Included by campaign_detail.html. #}
+{# Final ranked websites + per-website query drill-down. Included by campaign_detail.html. #}
 
 {% macro agreement_badge(agreement) -%}
   {% if agreement == 'High' %}
@@ -6,7 +6,7 @@
   {% elif agreement == 'Medium' %}
     <span class="badge text-bg-info">Medium</span>
   {% elif agreement == 'Single model' %}
-    <span class="badge text-bg-secondary">Single model</span>
+    <span class="badge text-bg-secondary">Single query</span>
   {% else %}
     <span class="badge text-bg-light border">Low</span>
   {% endif %}
@@ -29,8 +29,9 @@
           <th>Domain</th>
           <th>Category</th>
           <th style="width:110px">Final score</th>
-          <th style="width:90px">Models</th>
-          <th style="width:120px">Agreement</th>
+          <th style="width:90px" title="How many analysed queries surfaced this site">Queries</th>
+          <th style="width:90px" title="Most AI models that agreed on this site within a single query">Models</th>
+          <th style="width:120px">Breadth</th>
           <th>Main reason</th>
           <th class="text-end" style="width:100px">Action</th>
         </tr>
@@ -47,6 +48,7 @@
                 {{ '%g'|format(row.rec.final_score) }}
               </span>
             </td>
+            <td class="text-muted">{{ row.rec.query_count }}</td>
             <td class="text-muted">{{ row.rec.model_count }}</td>
             <td>{{ agreement_badge(row.rec.agreement) }}</td>
             <td class="small text-muted reason-cell">{{ row.rec.combined_reason or '-' }}</td>
@@ -78,44 +80,29 @@
         <div class="modal-body">
           <div class="d-flex flex-wrap gap-3 mb-4">
             <div><div class="stat-label">Final score</div><div class="fw-semibold">{{ '%g'|format(row.rec.final_score) }}</div></div>
-            <div><div class="stat-label">Models recommending</div><div class="fw-semibold">{{ row.rec.model_count }}</div></div>
-            <div><div class="stat-label">Agreement</div><div>{{ agreement_badge(row.rec.agreement) }}</div></div>
+            <div><div class="stat-label">Queries surfacing it</div><div class="fw-semibold">{{ row.rec.query_count }}</div></div>
+            <div><div class="stat-label">Max models / query</div><div class="fw-semibold">{{ row.rec.model_count }}</div></div>
+            <div><div class="stat-label">Breadth</div><div>{{ agreement_badge(row.rec.agreement) }}</div></div>
           </div>
 
+          <p class="text-muted small mb-2">Queries that surfaced this website:</p>
           {% for detail in row.details %}
             <div class="provider-block mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-semibold text-capitalize">{{ detail.provider_name }} assessment</span>
-                <span class="badge text-bg-light border text-capitalize">
-                  Confidence: {{ detail.confidence }}
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <span class="fw-medium small">{{ detail.query_text }}</span>
+                <span class="badge text-bg-light border">
+                  {{ '%g'|format(detail.score) }}
                 </span>
               </div>
-              <div class="row g-2 mb-2">
-                <div class="col-6 col-md-3">
-                  <div class="stat-label">Score</div><div class="fw-medium">{{ '%g'|format(detail.score) }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                  <div class="stat-label">Audience match</div><div class="fw-medium">{{ '%g'|format(detail.audience_match_score) }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                  <div class="stat-label">Objective fit</div><div class="fw-medium">{{ '%g'|format(detail.objective_fit_score) }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                  <div class="stat-label">Brand safety</div><div class="fw-medium">{{ '%g'|format(detail.brand_safety_score) }}</div>
-                </div>
+              <div class="small text-muted">
+                Recommended by:
+                {% for provider in detail.providers %}
+                  <span class="badge text-bg-light border text-capitalize me-1">{{ provider }}</span>
+                {% else %}
+                  <span>-</span>
+                {% endfor %}
               </div>
-              <p class="small mb-1"><span class="text-muted">Reason:</span> {{ detail.short_reason or '-' }}</p>
-              <p class="small mb-0"><span class="text-muted">Concerns:</span> {{ detail.concerns or '-' }}</p>
             </div>
-          {% endfor %}
-
-          {% set assessed = row.details | map(attribute='provider_name') | list %}
-          {% for provider in ['gemini', 'groq', 'openrouter'] %}
-            {% if provider in successful_providers and provider not in assessed %}
-              <p class="small text-muted mb-1">
-                <span class="text-capitalize">{{ provider }}</span> did not recommend this website.
-              </p>
-            {% endif %}
           {% endfor %}
         </div>
         <div class="modal-footer">

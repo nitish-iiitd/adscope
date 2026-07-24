@@ -1,6 +1,26 @@
+from dataclasses import dataclass
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+@dataclass(frozen=True)
+class ProviderConfig:
+    """One configured LLM provider instance.
+
+    ``type`` is the key into PROVIDER_REGISTRY; ``name`` is the label shown in
+    results and stored on rows (defaults to ``type``).
+    """
+
+    type: str
+    api_key: str
+    model: str
+    enabled: bool = True
+    name: str | None = None
+
+    @property
+    def label(self) -> str:
+        return self.name or self.type
 
 
 class Settings(BaseSettings):
@@ -20,6 +40,12 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     llm_timeout_seconds: int = 60
 
+    # --- Pipeline tunables (no magic numbers in code) ---
+    queries_per_provider: int = 10
+    max_websites_per_query: int = 10
+    max_final_websites: int = 50
+    llm_concurrency: int = 8
+
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash"
 
@@ -28,6 +54,21 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
+
+    def provider_configs(self) -> list[ProviderConfig]:
+        """Declarative list of provider instances the pipeline may use.
+
+        Adding a new LLM provider is: (1) write a BaseProvider subclass,
+        (2) register it in app.providers.registry.PROVIDER_REGISTRY, and
+        (3) add an entry here reading its api key / model settings.
+        """
+        return [
+            ProviderConfig(type="gemini", api_key=self.gemini_api_key, model=self.gemini_model),
+            ProviderConfig(type="groq", api_key=self.groq_api_key, model=self.groq_model),
+            ProviderConfig(
+                type="openrouter", api_key=self.openrouter_api_key, model=self.openrouter_model
+            ),
+        ]
 
 
 @lru_cache

@@ -74,3 +74,39 @@ class ProviderOutcome(BaseModel):
     recommendations: list[Recommendation] = []
     raw_response: str | None = None
     error_message: str | None = None
+
+
+class ProviderCallResult(BaseModel):
+    """Raw result of a single provider completion - transport-level only.
+
+    Providers now expose a generic ``complete(system, user)`` primitive that
+    returns raw text (or an error). Each service parses this text into whatever
+    schema that service needs, so the provider layer stays task-agnostic.
+    """
+
+    provider_name: str
+    success: bool
+    text: str | None = None
+    error_message: str | None = None
+
+
+class QueryGenerationResponse(BaseModel):
+    """Service-1 output from one provider: a list of audience-style queries."""
+
+    queries: list[str] = Field(default_factory=list)
+
+    @field_validator("queries", mode="before")
+    @classmethod
+    def coerce_queries(cls, v: object) -> object:
+        # Models sometimes return [{"query": "..."}] instead of ["..."].
+        if isinstance(v, list):
+            out: list[str] = []
+            for item in v:
+                if isinstance(item, str):
+                    out.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("query") or item.get("text") or item.get("prompt")
+                    if isinstance(text, str):
+                        out.append(text)
+            return out
+        return v

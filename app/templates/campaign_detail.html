@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ campaign.campaign_name }} &middot; {{ app_name }}{% endblock %}
 
+{# Condition must live INSIDE the block (see review.html): a child block always
+   overrides the parent, so only render the refresh tag while still processing. #}
+{% block head %}{% if processing %}<meta http-equiv="refresh" content="4">{% endif %}{% endblock %}
+
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
   <div>
@@ -18,15 +22,41 @@
   </a>
 </div>
 
+{% if processing %}
+  <div class="card mb-3">
+    <div class="card-body text-center p-5">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading</span>
+      </div>
+      <h2 class="h6 fw-semibold mb-1">Discovering websites</h2>
+      <p class="text-muted small mb-0">
+        Asking every AI model which websites it would consult for each of your
+        {{ selected_query_count }} selected quer{{ 'y' if selected_query_count == 1 else 'ies' }},
+        then ranking the combined results. This page refreshes automatically.
+      </p>
+    </div>
+  </div>
+
+  {% if selected_queries %}
+    <div class="card">
+      <div class="card-header bg-white fw-semibold py-3">
+        Queries being analysed ({{ selected_query_count }})
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for q in selected_queries %}
+          <li class="list-group-item small">{{ q.text }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+{% else %}
+
 {% if campaign.status == 'failed' %}
   <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
     <i class="bi bi-exclamation-octagon-fill mt-1"></i>
     <div>
       <div class="fw-semibold">Analysis failed</div>
-      <div class="small">
-        Every AI provider failed for this campaign, so no recommendations could be generated.
-        Check the provider status below and try again.
-      </div>
+      <div class="small">{{ campaign.error_message or 'No recommendations could be generated.' }}</div>
     </div>
   </div>
 {% elif campaign.status == 'completed_with_warnings' %}
@@ -35,7 +65,7 @@
     <div>
       <div class="fw-semibold">Completed with warnings</div>
       <div class="small">
-        Some providers failed. Results below are based on the providers that responded.
+        Some provider calls failed. Results below are based on the calls that responded.
       </div>
     </div>
   </div>
@@ -43,12 +73,25 @@
 
 <div class="row g-3 mb-4">
   <div class="col-12 col-lg-8">
-    <div class="card">
+    <div class="card mb-3">
       <div class="card-header bg-white fw-semibold py-3">Campaign briefing</div>
       <div class="card-body">
         <p class="briefing-text mb-0">{{ campaign.briefing }}</p>
       </div>
     </div>
+
+    {% if selected_queries %}
+      <div class="card">
+        <div class="card-header bg-white fw-semibold py-3">
+          Queries analysed ({{ selected_query_count }})
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for q in selected_queries %}
+            <li class="list-group-item small">{{ q.text }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
   </div>
 
   <div class="col-12 col-lg-4">
@@ -67,6 +110,9 @@
             <dt>Budget</dt>
             <dd>{{ campaign.budget }}</dd>
           {% endif %}
+
+          <dt>Queries analysed</dt>
+          <dd>{{ selected_query_count }}</dd>
 
           <dt>Unique websites</dt>
           <dd>{{ unique_websites }}</dd>
@@ -128,4 +174,6 @@
     campaign execution.
   </div>
 </div>
+
+{% endif %}
 {% endblock %}

@@ -1,6 +1,6 @@
 import httpx
 
-from app.providers.base import SYSTEM_PROMPT, BaseProvider
+from app.providers.base import BaseProvider
 
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -8,7 +8,7 @@ API_URL = "https://api.groq.com/openai/v1/chat/completions"
 class GroqProvider(BaseProvider):
     name = "groq"
 
-    async def _call_api(self, client: httpx.AsyncClient, prompt: str) -> str:
+    async def _call_api(self, client: httpx.AsyncClient, system_prompt: str, user_prompt: str) -> str:
         response = await client.post(
             API_URL,
             headers={"Authorization": f"Bearer {self.api_key}"},
@@ -17,8 +17,8 @@ class GroqProvider(BaseProvider):
                 "temperature": 0.4,
                 "response_format": {"type": "json_object"},
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
             },
         )

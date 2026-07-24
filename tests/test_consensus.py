@@ -1,7 +1,12 @@
 import pytest
 
 from app.schemas.campaign import ProviderOutcome, Recommendation
-from app.services.consensus_service import build_consensus, normalize_domain
+from app.services.consensus_service import (
+    ConsensusEntry,
+    aggregate_across_queries,
+    build_consensus,
+    normalize_domain,
+)
 
 
 @pytest.mark.parametrize(
@@ -126,3 +131,61 @@ def test_provider_details_preserve_individual_assessments():
     assert scores == {"gemini": 80.0, "groq": 90.0}
     # Name comes from the highest-scoring provider.
     assert entry.website_name == "Example B"
+
+
+def _entry(domain: str, score: float, model_count: int = 2, name: str = "Site") -> ConsensusEntry:
+    return ConsensusEntry(
+        domain=domain,
+        website_name=name,
+        category="Lifestyle",
+        final_score=score,
+        model_count=model_count,
+        agreement="High",
+        combined_reason=f"reason {score}",
+        provider_details=[{"provider_name": "gemini"}],
+    )
+
+
+class TestAggregateAcrossQueries:
+    def test_breadth_beats_a_higher_single_query_score(self):
+        per_query = [
+            ("q1", [_entry("broad.com", 60), _entry("narrow.com", 99)]),
+            ("q2", [_entry("broad.com", 62)]),
+            ("q3", [_entry("broad.com", 58)]),
+        ]
+        results = aggregate_across_queries(per_query, max_results=50)
+
+        top = results[0]
+        assert top.domain == "broad.com"
+        assert top.query_count == 3
+        assert results[1].domain == "narrow.com"
+        assert results[1].query_count == 1
+
+    def test_final_score_is_mean_across_queries(self):
+        per_query = [("q1", [_entry("a.com", 80)]), ("q2", [_entry("a.com", 60)])]
+        results = aggregate_across_queries(per_query, max_results=50)
+        assert results[0].final_score == 70.0
+
+    def test_breadth_agreement_reflects_query_coverage(self):
+        per_query = [
+            ("q1", [_entry("a.com", 80), _entry("b.com", 80), _entry("c.com", 80)]),
+            ("q2", [_entry("a.com", 80), _entry("b.com", 80)]),
+            ("q3", [_entry("a.com", 80)]),
+        ]
+        by_domain = {e.domain: e for e in aggregate_across_queries(per_query, max_results=50)}
+        assert by_domain["a.com"].agreement == "High"
+        assert by_domain["c.com"].agreement == "Single model"
+
+    def test_max_results_caps_the_final_list(self):
+        per_query = [("q1", [_entry(f"site{i}.com", 90 - i) for i in range(10)])]
+        results = aggregate_across_queries(per_query, max_results=3)
+        assert len(results) == 3
+
+    def test_provider_details_carry_per_query_breakdown(self):
+        per_query = [("what is x?", [_entry("a.com", 80)])]
+        entry = aggregate_across_queries(per_query, max_results=50)[0]
+        assert entry.provider_details[0]["query_text"] == "what is x?"
+        assert entry.provider_details[0]["providers"] == ["gemini"]
+
+    def test_empty_input_yields_no_entries(self):
+        assert aggregate_across_queries([], max_results=50) == []

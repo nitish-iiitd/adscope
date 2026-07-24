@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Review queries &middot; {{ app_name }}{% endblock %}
+
+{# Poll only while service-1 is still generating. The condition must live INSIDE
+   the block: a child {% block %} overrides the parent regardless of any
+   surrounding {% if %}, so gating has to happen at render time in here. #}
+{% block head %}{% if generating %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb small mb-1">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Review queries</li>
+      </ol>
+    </nav>
+    <h1 class="h4 fw-semibold mb-1">{{ campaign.campaign_name }}</h1>
+    <p class="text-muted small mb-0">{{ campaign.client_name }}</p>
+  </div>
+</div>
+
+{% if generating %}
+  <div class="card">
+    <div class="card-body text-center p-5">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading</span>
+      </div>
+      <h2 class="h6 fw-semibold mb-1">Generating audience queries</h2>
+      <p class="text-muted small mb-0">
+        Each AI model is drafting the questions your target audience might ask their own
+        assistant. This page refreshes automatically.
+      </p>
+    </div>
+  </div>
+{% else %}
+  {% if error %}
+    <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span>{{ error }}</span>
+    </div>
+  {% endif %}
+
+  <div class="alert alert-secondary d-flex align-items-start gap-2" role="note">
+    <i class="bi bi-info-circle-fill mt-1"></i>
+    <div class="small">
+      These queries were generated from the brief. Edit any wording, deselect the ones you
+      don't want, remove them, or add your own. Selected queries are sent to the AI models to
+      discover the websites they'd consult.
+    </div>
+  </div>
+
+  <form method="post" action="/campaigns/{{ campaign.id }}/queries" id="review-form">
+    <div class="card mb-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <span class="fw-semibold">Audience queries</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="add-query">
+          <i class="bi bi-plus-circle me-1"></i>Add query
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="query-rows">
+          {% for q in queries %}
+            <div class="query-row d-flex align-items-start gap-2 mb-2" data-index="{{ loop.index0 }}">
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="selected_{{ loop.index0 }}"
+                       {% if q.is_selected %}checked{% endif %} aria-label="Select query">
+              </div>
+              <div class="flex-grow-1">
+                <textarea class="form-control" name="text_{{ loop.index0 }}" rows="2"
+                          maxlength="500">{{ q.text }}</textarea>
+                <div class="form-text">
+                  {% if q.is_custom %}Custom{% else %}from {{ q.source_provider or 'model' }}{% endif %}
+                </div>
+                <input type="hidden" name="source_{{ loop.index0 }}" value="{{ q.source_provider or '' }}">
+                <input type="hidden" name="custom_{{ loop.index0 }}" value="{{ '1' if q.is_custom else '0' }}">
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger mt-1 remove-query"
+                      aria-label="Remove query"><i class="bi bi-trash"></i></button>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-stars me-1"></i>Find websites for selected queries
+      </button>
+      <a href="/" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+
+  <template id="query-row-template">
+    <div class="query-row d-flex align-items-start gap-2 mb-2">
+      <div class="form-check mt-2">
+        <input class="form-check-input" type="checkbox" checked aria-label="Select query">
+      </div>
+      <div class="flex-grow-1">
+        <textarea class="form-control" rows="2" maxlength="500" placeholder="Type a custom query"></textarea>
+        <div class="form-text">Custom</div>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-danger mt-1 remove-query"
+              aria-label="Remove query"><i class="bi bi-trash"></i></button>
+    </div>
+  </template>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not generating %}
+<script>
+(function () {
+  "use strict";
+  const rows = document.getElementById("query-rows");
+  const template = document.getElementById("query-row-template");
+  const addBtn = document.getElementById("add-query");
+  if (!rows || !template || !addBtn) return;
+
+  // Continue indexing after the server-rendered rows so field names stay unique.
+  let nextIndex = rows.querySelectorAll(".query-row").length;
+
+  function wireRemove(row) {
+    const btn = row.querySelector(".remove-query");
+    if (btn) btn.addEventListener("click", () => row.remove());
+  }
+
+  rows.querySelectorAll(".query-row").forEach(wireRemove);
+
+  addBtn.addEventListener("click", function () {
+    const i = nextIndex++;
+    const frag = template.content.cloneNode(true);
+    const row = frag.querySelector(".query-row");
+    row.dataset.index = i;
+    row.querySelector("input[type=checkbox]").name = "selected_" + i;
+    const textarea = row.querySelector("textarea");
+    textarea.name = "text_" + i;
+
+    const custom = document.createElement("input");
+    custom.type = "hidden";
+    custom.name = "custom_" + i;
+    custom.value = "1";
+    row.querySelector(".flex-grow-1").appendChild(custom);
+
+    wireRemove(row);
+    rows.appendChild(row);
+    textarea.focus();
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,23 +1,22 @@
-"""Turns raw form input into validated data, runs the service, and shapes view data.
+"""Turns raw form input into validated data and shapes view data.
 
-Keeps routers thin: routers only deal with HTTP, this module owns the
-request-to-service translation and error messaging.
+Keeps routers thin: routers deal with HTTP and background scheduling, this
+module owns form parsing, validation and error messaging.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping
 
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.config import Settings
 from app.entities.models import Campaign
+from app.repositories import campaign_repository as repo
 from app.schemas.campaign import CampaignCreate
-from app.services.campaign_service import run_campaign
-from app.services.llm_service import NoProvidersConfiguredError
 
 logger = logging.getLogger(__name__)
 
@@ -61,19 +60,48 @@ def _first_error_message(exc: ValidationError) -> str:
     return f"{label} is invalid."
 
 
-async def handle_create_campaign(db: Session, form: dict[str, str], settings: Settings) -> Campaign:
+def create_campaign(db: Session, form: dict[str, str]) -> Campaign:
+    """Validate the brief and create the campaign row (service-1 runs after)."""
     data = parse_form(form)
     try:
-        return await run_campaign(db, data, settings)
-    except NoProvidersConfiguredError as exc:
-        logger.error("Campaign rejected: %s", exc)
-        raise CampaignRunError(
-            "No AI providers are configured. Add a provider API key or enable demo mode, then try again."
-        ) from exc
+        return repo.create_campaign(db, data)
     except SQLAlchemyError as exc:
         db.rollback()
-        logger.exception("Database error while running campaign: %s", exc)
+        logger.exception("Database error while creating campaign: %s", exc)
         raise CampaignRunError("Could not save the campaign. Please try again.") from exc
+
+
+def parse_review_form(form: Mapping[str, str]) -> list[dict]:
+    """Parse the dynamic review form into query items for persistence.
+
+    Rows use indexed field names (text_{i}, selected_{i}, source_{i}, custom_{i})
+    so rows can be freely added or removed client-side. Empty text is dropped;
+    at least one selected, non-empty query is required.
+    """
+    indices: set[int] = set()
+    for key in form:
+        if key.startswith("text_"):
+            suffix = key.removeprefix("text_")
+            if suffix.isdigit():
+                indices.add(int(suffix))
+
+    items: list[dict] = []
+    for i in sorted(indices):
+        text = (form.get(f"text_{i}") or "").strip()
+        if not text:
+            continue
+        items.append(
+            {
+                "text": text,
+                "source_provider": form.get(f"source_{i}") or None,
+                "is_custom": form.get(f"custom_{i}") == "1",
+                "is_selected": f"selected_{i}" in form,
+            }
+        )
+
+    if not any(item["is_selected"] for item in items):
+        raise CampaignInputError("Select at least one query to analyse.")
+    return items
 
 
 def decode_provider_details(raw: str | None) -> list[dict]:

@@ -31,6 +31,7 @@ class ConsensusEntry:
     model_count: int
     agreement: str
     combined_reason: str
+    query_count: int = 0
     provider_details: list[dict] = field(default_factory=list)
 
 
@@ -117,3 +118,67 @@ def build_consensus(outcomes: list[ProviderOutcome]) -> list[ConsensusEntry]:
 
     entries.sort(key=lambda e: (-e.model_count, -e.final_score, e.domain))
     return entries
+
+
+def _breadth_agreement(query_count: int, total_queries: int) -> str:
+    """How broadly a site was surfaced across the refined query set."""
+    if total_queries <= 1 or query_count <= 1:
+        return AGREEMENT_SINGLE
+    ratio = query_count / total_queries
+    if ratio >= 0.66:
+        return AGREEMENT_HIGH
+    if ratio >= 0.33:
+        return AGREEMENT_MEDIUM
+    return AGREEMENT_LOW
+
+
+def aggregate_across_queries(
+    per_query: list[tuple[str, list[ConsensusEntry]]],
+    max_results: int,
+) -> list[ConsensusEntry]:
+    """Merge the per-query ranked lists (service-2 level 2) into one final list.
+
+    Each input is ``(query_text, entries)`` where ``entries`` is the level-1
+    consensus for that query. Sites are grouped by normalized domain; a site
+    surfaced by more queries ranks higher (breadth), with mean score as the
+    tie-breaker. ``provider_details`` carries a per-query breakdown for drill-down.
+    """
+    total_queries = len(per_query)
+    grouped: dict[str, list[tuple[str, ConsensusEntry]]] = {}
+    for query_text, entries in per_query:
+        for entry in entries:
+            grouped.setdefault(entry.domain, []).append((query_text, entry))
+
+    results: list[ConsensusEntry] = []
+    for domain, items in grouped.items():
+        query_count = len(items)
+        scores = [e.final_score for _, e in items]
+        final_score = round(sum(scores) / len(scores), 1)
+        best = max(items, key=lambda pair: pair[1].final_score)[1]
+        model_count = max(e.model_count for _, e in items)
+        results.append(
+            ConsensusEntry(
+                domain=domain,
+                website_name=best.website_name,
+                category=best.category,
+                final_score=final_score,
+                model_count=model_count,
+                query_count=query_count,
+                agreement=_breadth_agreement(query_count, total_queries),
+                combined_reason=best.combined_reason,
+                provider_details=[
+                    {
+                        "query_text": query_text,
+                        "score": entry.final_score,
+                        "model_count": entry.model_count,
+                        "providers": [d["provider_name"] for d in entry.provider_details],
+                    }
+                    for query_text, entry in sorted(
+                        items, key=lambda pair: -pair[1].final_score
+                    )
+                ],
+            )
+        )
+
+    results.sort(key=lambda e: (-e.query_count, -e.final_score, e.domain))
+    return results[:max_results]
