@@ -308,7 +308,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
   cursor: pointer; white-space: nowrap; text-decoration: none;
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.btn:hover { text-decoration: none; }
+/* Keep the button's own text color on hover. Without this, the base `a:hover`
+   color rule (higher specificity than `.btn`) recolors anchor-buttons — making
+   primary anchors' text vanish against their fill. Variant :hover rules below
+   still override where they set their own color. */
+.btn:hover { text-decoration: none; color: var(--btn-fg); }
 .btn:active { transform: translateY(0.5px); }
 .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 .btn .btn__ico { width: 16px; height: 16px; flex: none; }
