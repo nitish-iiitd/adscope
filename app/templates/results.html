@@ -73,7 +73,7 @@
           <td>{{ sig_agreement(rec.model_count) }}</td>
           <td>{{ breadth_badge(rec.agreement) }}</td>
           <td class="reason">{{ rec.combined_reason or '—' }}</td>
-          <td style="text-align:right"><button type="button" class="btn btn--ghost btn--sm" data-open-panel="rec-{{ rec.id }}">Details</button></td>
+          <td style="text-align:right"><button type="button" class="btn btn--secondary btn--sm" data-open-panel="rec-{{ rec.id }}">Details<svg class="btn__ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px"><path d="M6 4l4 4-4 4"/></svg></button></td>
         </tr>
       {% endfor %}
     </tbody>
@@ -106,12 +106,7 @@
           <div class="metric metric--agreement"><div class="metric__label"><span class="motif-legend__swatch motif-legend__swatch--agreement" style="width:9px;height:9px;border-radius:2px"></span>Agreement</div><div class="metric__value">{{ rec.model_count }}<span style="font-size:.9rem;color:var(--text-3)"> models</span></div></div>
         </div>
 
-        <div class="alert alert--info mb-5" style="padding:11px 13px">
-          <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 8v4M9 5.5h.01"/></svg>
-          <div class="alert__body"><div class="alert__text">No black box — here's exactly which audience questions surfaced this site, and which models named it for each.</div></div>
-        </div>
-
-        <div class="eyebrow mb-4">Per-query breakdown</div>
+        <div class="eyebrow mb-4 mt-5">Per-query breakdown</div>
         {% for detail in row.details %}
           <div class="qbreak">
             <div class="qbreak__q">{{ detail.query_text }}</div>
