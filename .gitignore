@@ -8,3 +8,5 @@ data/*.db
 .ruff_cache/
 .DS_Store
 .idea
+adscope.iml
+adscope_design_system_delivery

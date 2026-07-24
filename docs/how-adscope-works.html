@@ -1,0 +1,869 @@
+<style>
+  :root {
+    --paper: #F1F3EF;
+    --surface: #FBFBF8;
+    --surface-2: #F5F7F2;
+    --ink: #15201C;
+    --ink-soft: #3D4A45;
+    --ink-faint: #6A766F;
+    --line: #DBDFD8;
+    --line-strong: #C7CCC3;
+    --accent: #0C7A67;
+    --accent-deep: #084F42;
+    --accent-tint: rgba(12, 122, 103, 0.10);
+    --beacon: #B4791E;
+    --beacon-tint: rgba(180, 121, 30, 0.12);
+
+    --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+    --measure: 42rem;
+    --wide: 60rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0F1614;
+      --surface: #161F1C;
+      --surface-2: #1B2521;
+      --ink: #E9ECE7;
+      --ink-soft: #B3BDB7;
+      --ink-faint: #7C8882;
+      --line: #26302C;
+      --line-strong: #33403B;
+      --accent: #2FC4AA;
+      --accent-deep: #7FE6D3;
+      --accent-tint: rgba(47, 196, 170, 0.13);
+      --beacon: #E0AC55;
+      --beacon-tint: rgba(224, 172, 85, 0.14);
+    }
+  }
+
+  :root[data-theme="light"] {
+    --paper: #F1F3EF;
+    --surface: #FBFBF8;
+    --surface-2: #F5F7F2;
+    --ink: #15201C;
+    --ink-soft: #3D4A45;
+    --ink-faint: #6A766F;
+    --line: #DBDFD8;
+    --line-strong: #C7CCC3;
+    --accent: #0C7A67;
+    --accent-deep: #084F42;
+    --accent-tint: rgba(12, 122, 103, 0.10);
+    --beacon: #B4791E;
+    --beacon-tint: rgba(180, 121, 30, 0.12);
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0F1614;
+    --surface: #161F1C;
+    --surface-2: #1B2521;
+    --ink: #E9ECE7;
+    --ink-soft: #B3BDB7;
+    --ink-faint: #7C8882;
+    --line: #26302C;
+    --line-strong: #33403B;
+    --accent: #2FC4AA;
+    --accent-deep: #7FE6D3;
+    --accent-tint: rgba(47, 196, 170, 0.13);
+    --beacon: #E0AC55;
+    --beacon-tint: rgba(224, 172, 85, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { padding: 0 1.5rem 5rem; }
+
+  .col {
+    max-width: var(--measure);
+    margin-inline: auto;
+  }
+  .col-wide {
+    max-width: var(--wide);
+    margin-inline: auto;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 5.5rem 0 3rem;
+    overflow: hidden;
+  }
+  .hero-rings {
+    position: absolute;
+    inset: -40% 0 auto auto;
+    right: -8rem;
+    top: -10rem;
+    width: 40rem;
+    height: 40rem;
+    background:
+      radial-gradient(circle, transparent 0 6.2rem, var(--line) 6.2rem 6.28rem, transparent 6.28rem 9.2rem, var(--line) 9.2rem 9.28rem, transparent 9.28rem 12.2rem, var(--line) 12.2rem 12.28rem, transparent 12.28rem 15.2rem, var(--line) 15.2rem 15.28rem, transparent 15.28rem);
+    opacity: 0.7;
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(circle at center, #000 40%, transparent 72%);
+            mask-image: radial-gradient(circle at center, #000 40%, transparent 72%);
+  }
+  .hero-inner { position: relative; max-width: var(--measure); }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 1.6rem;
+    height: 1px;
+    background: var(--accent);
+    display: inline-block;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.6rem, 6vw, 4.2rem);
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 1.3rem;
+  }
+  h1 .mark { color: var(--accent); font-style: italic; }
+  .lede {
+    font-size: clamp(1.15rem, 2.4vw, 1.4rem);
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 34rem;
+    margin: 0 0 2rem;
+    text-wrap: pretty;
+  }
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+  }
+  .chip {
+    border: 1px solid var(--line-strong);
+    border-radius: 100px;
+    padding: 0.3rem 0.8rem;
+    background: var(--surface);
+  }
+
+  /* ---------- Section rhythm ---------- */
+  section { margin-top: 4.5rem; }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.9rem;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.7rem, 3.5vw, 2.3rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 1.1rem;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.3rem;
+    line-height: 1.25;
+    margin: 0 0 0.5rem;
+  }
+  p { margin: 0 0 1.1rem; }
+  .col p, .col li { max-width: var(--measure); }
+  strong { color: var(--ink); font-weight: 650; }
+  em { color: var(--ink-soft); }
+
+  /* ---------- Statement (one sentence) ---------- */
+  .statement {
+    max-width: var(--wide);
+    margin: 4.5rem auto 0;
+    padding: 2.5rem 2.5rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+  }
+  .statement p {
+    font-family: var(--font-display);
+    font-size: clamp(1.35rem, 3vw, 1.85rem);
+    line-height: 1.4;
+    color: var(--ink);
+    margin: 0;
+    max-width: none;
+    text-wrap: pretty;
+  }
+  .statement .hl { color: var(--accent); }
+
+  /* ---------- Pipeline diagram ---------- */
+  .pipeline-scroll {
+    max-width: var(--wide);
+    margin-inline: auto;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-width: 46rem;
+  }
+  .pnode {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1rem 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .pnode .pnum {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .pnode .ptitle {
+    font-weight: 650;
+    font-size: 0.95rem;
+    line-height: 1.25;
+  }
+  .parrow {
+    align-self: center;
+    color: var(--ink-faint);
+    padding: 0 0.55rem;
+    font-family: var(--font-mono);
+    flex: 0 0 auto;
+  }
+  .pnode.human {
+    border-color: var(--beacon);
+    background: var(--beacon-tint);
+  }
+  .pnode.human .pnum { color: var(--beacon); }
+
+  /* ---------- Numbered stages ---------- */
+  .stages {
+    max-width: var(--wide);
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .stage {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 1.5rem;
+    padding: 2rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .stage:last-child { border-bottom: 1px solid var(--line); }
+  .stage-num {
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 500;
+    color: var(--accent);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stage.human .stage-num { color: var(--beacon); }
+  .stage-body { max-width: var(--measure); }
+  .stage-body h3 { margin-top: 0.15rem; }
+  .stage-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--beacon);
+    background: var(--beacon-tint);
+    border-radius: 100px;
+    padding: 0.15rem 0.6rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+  .example {
+    margin-top: 0.9rem;
+    padding: 0.85rem 1.1rem;
+    background: var(--surface-2);
+    border-radius: 5px;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+  .example .lbl {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  /* ---------- Two-signal cards ---------- */
+  .duo {
+    max-width: var(--wide);
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .signal-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.6rem 1.5rem;
+  }
+  .signal-card.teal { border-top: 3px solid var(--accent); }
+  .signal-card.amber { border-top: 3px solid var(--beacon); }
+  .signal-card .tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0 0 0.6rem;
+  }
+  .signal-card.teal .tag { color: var(--accent); }
+  .signal-card.amber .tag { color: var(--beacon); }
+  .signal-card p { margin: 0; font-size: 0.98rem; color: var(--ink-soft); }
+  .signal-card p strong { color: var(--ink); }
+
+  /* ---------- Definition list (signals) ---------- */
+  .defs {
+    max-width: var(--measure);
+    margin: 1.5rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .def {
+    display: grid;
+    grid-template-columns: 8rem 1fr;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .def dt {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+  }
+  .def dd { margin: 0; font-size: 0.97rem; color: var(--ink-soft); }
+
+  /* ---------- Worked example ---------- */
+  .walk {
+    max-width: var(--measure);
+    margin: 1.5rem auto 0;
+    list-style: none;
+    padding: 0;
+    counter-reset: walk;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .walk li {
+    position: relative;
+    padding-left: 2.6rem;
+    counter-increment: walk;
+    color: var(--ink-soft);
+  }
+  .walk li::before {
+    content: counter(walk);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 100px;
+    background: var(--accent-tint);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .walk li strong { color: var(--ink); }
+
+  /* ---------- Callout ---------- */
+  .note {
+    max-width: var(--wide);
+    margin: 2rem auto 0;
+    padding: 1.4rem 1.6rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+  }
+  .note .rail {
+    flex: 0 0 auto;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--beacon);
+  }
+  .note p { margin: 0; font-size: 0.97rem; color: var(--ink-soft); }
+  .note p strong { color: var(--ink); }
+
+  .trust {
+    max-width: var(--measure);
+    margin: 1.4rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+  .trust .ti { display: grid; grid-template-columns: 1.4rem 1fr; gap: 0.8rem; }
+  .trust .ti .dot {
+    width: 0.55rem; height: 0.55rem; border-radius: 100px;
+    background: var(--accent); margin-top: 0.5rem;
+  }
+  .trust .ti p { margin: 0; font-size: 0.98rem; color: var(--ink-soft); }
+  .trust .ti p strong { color: var(--ink); }
+
+  /* ---------- Pitch ---------- */
+  .pitch {
+    max-width: var(--wide);
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+  .pitch .p {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+  .pitch .p .n {
+    font-family: var(--font-mono);
+    color: var(--accent);
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 0.7rem;
+  }
+  .pitch .p p { margin: 0; font-size: 0.98rem; }
+
+  /* ---------- Glossary ---------- */
+  .table-scroll {
+    max-width: var(--wide);
+    margin-inline: auto;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; }
+  th, td {
+    text-align: left;
+    padding: 0.8rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child {
+    font-weight: 650;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  td:last-child { color: var(--ink-soft); }
+
+  /* ---------- Footer ---------- */
+  .foot {
+    max-width: var(--wide);
+    margin: 4.5rem auto 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .foot .brand { font-family: var(--font-mono); letter-spacing: 0.08em; }
+
+  /* ---------- Motion ---------- */
+  .reveal { opacity: 0; transform: translateY(14px); animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
+  .reveal.d1 { animation-delay: 0.05s; }
+  .reveal.d2 { animation-delay: 0.13s; }
+  .reveal.d3 { animation-delay: 0.21s; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { animation: none; opacity: 1; transform: none; }
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 40rem) {
+    .duo, .pitch { grid-template-columns: 1fr; }
+    .stage { grid-template-columns: 1fr; gap: 0.5rem; }
+    .stage-num { font-size: 1.5rem; }
+    .def { grid-template-columns: 1fr; gap: 0.2rem; }
+    .statement { padding: 1.8rem 1.5rem; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <div class="hero-rings" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <p class="eyebrow reveal">Media planning · AI answer-engine discovery</p>
+      <h1 class="reveal d1">How <span class="mark">AdScope</span> Works</h1>
+      <p class="lede reveal d2">
+        A plain-English guide to a tool that finds where your advertising belongs —
+        by predicting what your audience asks AI assistants, and which websites
+        those assistants trust to answer.
+      </p>
+      <div class="hero-meta reveal d3">
+        <span class="chip">For any audience — no technical knowledge needed</span>
+        <span class="chip">End-to-end walkthrough</span>
+        <span class="chip">Ready to present</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="statement reveal">
+    <p>
+      AdScope tells you which websites your advertising should appear on — by
+      predicting the questions your target audience asks AI assistants, and then
+      discovering <span class="hl">which websites those assistants rely on to answer.</span>
+    </p>
+  </div>
+
+  <section class="col">
+    <p class="kicker">The shift</p>
+    <h2>Why this exists</h2>
+    <p>
+      For years, deciding <em>where</em> to advertise meant relying on a planner's
+      experience, traffic reports, and audience panels. That still matters — but how
+      people discover products has changed.
+    </p>
+    <p>
+      Increasingly, people don't start with a search engine or a magazine. They
+      <strong>ask an AI assistant</strong> — ChatGPT, Gemini, and others — questions like
+      <em>"What's a good organic sunscreen for daily use in India?"</em> The assistant
+      answers by drawing on a set of trusted websites, and often names them.
+    </p>
+    <p>
+      That creates a new, high-value question for advertisers: <strong>when my audience
+      asks an AI assistant about my product category, which websites does that assistant
+      surface?</strong> Those sites shape the customer's decision at the moment of intent —
+      and AdScope finds them systematically instead of guessing.
+    </p>
+  </section>
+
+  <section class="col">
+    <p class="kicker">The idea</p>
+    <h2>A simple thought experiment, run at scale</h2>
+    <p>AdScope does three things, in order:</p>
+    <dl class="defs">
+      <div class="def"><dt>Imagine</dt><dd>Picture your customer talking to an AI assistant. What would they actually type?</dd></div>
+      <div class="def"><dt>Ask</dt><dd>Put those same questions to AI assistants and note which websites they'd consult to answer.</dd></div>
+      <div class="def"><dt>Rank</dt><dd>Collect every website and rank them. The ones that keep appearing are where your brand most wants to be seen.</dd></div>
+    </dl>
+    <p style="margin-top:1.4rem;">
+      That's the whole concept. Everything else is about doing this
+      <strong>reliably, transparently, and with a human in control.</strong>
+    </p>
+  </section>
+
+  <section>
+    <div class="col"><p class="kicker">The journey</p>
+      <h2>Five stages, end to end</h2>
+      <p>From a written brief to a ranked list of publishers.</p>
+    </div>
+    <div class="pipeline-scroll" role="img" aria-label="Pipeline: brief, AI drafts questions, human review, AI finds websites, ranked list">
+      <div class="pipeline">
+        <div class="pnode"><span class="pnum">01</span><span class="ptitle">Campaign brief</span></div>
+        <span class="parrow" aria-hidden="true">→</span>
+        <div class="pnode"><span class="pnum">02</span><span class="ptitle">AI drafts audience questions</span></div>
+        <span class="parrow" aria-hidden="true">→</span>
+        <div class="pnode human"><span class="pnum">03 · You</span><span class="ptitle">Review &amp; refine questions</span></div>
+        <span class="parrow" aria-hidden="true">→</span>
+        <div class="pnode"><span class="pnum">04</span><span class="ptitle">AI finds websites per question</span></div>
+        <span class="parrow" aria-hidden="true">→</span>
+        <div class="pnode"><span class="pnum">05</span><span class="ptitle">Ranked list of websites</span></div>
+      </div>
+    </div>
+
+    <div class="stages">
+      <div class="stage">
+        <div class="stage-num">01</div>
+        <div class="stage-body">
+          <h3>You describe the campaign</h3>
+          <p>
+            Fill in a short form: client, campaign, target country, objective, an optional
+            budget, and a free-text briefing describing the product, audience, and positioning.
+          </p>
+          <div class="example">
+            <span class="lbl">Example brief</span>
+            A premium organic skincare brand targeting women aged 25–40 in major Indian
+            cities. Objective: brand awareness.
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-num">02</div>
+        <div class="stage-body">
+          <h3>AI drafts the questions your audience would ask</h3>
+          <p>
+            AdScope sends the brief to <strong>several AI models at once</strong> and asks each:
+            <em>"What would a real person in this audience type into their own AI assistant?"</em>
+            Each returns a set of realistic questions — about 30 in total across three models,
+            covering research, comparison, buying, how-to, and local angles.
+          </p>
+          <div class="example">
+            <span class="lbl">Example questions</span>
+            "What are the best premium organic skincare brands in India right now?" ·
+            "Which face serums work well for humid monsoon weather?" ·
+            "Where do beauty editors recommend shopping for skincare online?"
+          </div>
+        </div>
+      </div>
+
+      <div class="stage human">
+        <div class="stage-num">03</div>
+        <div class="stage-body">
+          <h3>You review and refine the questions <span class="stage-tag">Human step</span></h3>
+          <p>
+            AdScope <strong>pauses</strong> and shows you every drafted question in a clean editor.
+            You can <strong>edit</strong> the wording, <strong>remove</strong> ones that don't fit,
+            <strong>deselect</strong> some to keep on record, or <strong>add</strong> your own.
+            Nothing proceeds until you submit — the AI proposes, <em>you decide.</em>
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-num">04</div>
+        <div class="stage-body">
+          <h3>AI finds the websites for each question</h3>
+          <p>
+            For <strong>every question you approved</strong>, AdScope asks <strong>each AI model</strong>:
+            <em>"To answer this, which websites would you consult?"</em> Each returns a scored list.
+            Ten approved questions across three models means thirty separate website lists —
+            gathered automatically in the background while a progress screen keeps you posted.
+          </p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-num">05</div>
+        <div class="stage-body">
+          <h3>AdScope ranks everything into one list</h3>
+          <p>
+            All those lists are merged into a <strong>single ranked list of publishers</strong> —
+            what you present and act on. How the ranking works is next.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col">
+    <p class="kicker">Reliability</p>
+    <h2>Why several AI models, not one</h2>
+    <p>
+      Any single AI model can be biased or incomplete. AdScope deliberately asks
+      <strong>multiple independent models</strong> and looks for <strong>agreement</strong> — the same
+      principle as consulting several experts and trusting what they concur on.
+    </p>
+    <p>
+      If three models all name a website, that's a strong signal. If only one does, it's
+      weaker — worth noting, not over-weighting. AdScope is also <strong>extensible</strong>: it isn't
+      locked to a fixed set of models. New AI providers can be added as they emerge, without
+      redesigning the system.
+    </p>
+  </section>
+
+  <section>
+    <div class="col">
+      <p class="kicker">The ranking</p>
+      <h2>Two simple ideas decide the order</h2>
+      <p>No maths required to explain either one.</p>
+    </div>
+    <div class="duo">
+      <div class="signal-card teal">
+        <p class="tag">Idea 1 — Agreement</p>
+        <p>
+          For a <strong>single question</strong>, if several models independently name the same
+          website, they agree. More agreement means more confidence the site is genuinely
+          relevant to that question.
+        </p>
+      </div>
+      <div class="signal-card amber">
+        <p class="tag">Idea 2 — Breadth</p>
+        <p>
+          A site that appears for <strong>many</strong> of your audience's questions is broadly
+          important — it sits at the centre of the conversation, not just one corner of it.
+        </p>
+      </div>
+    </div>
+    <div class="col">
+      <p style="margin-top:1.6rem;">
+        <strong>AdScope prioritises breadth first, then agreement, then relevance score.</strong>
+        In plain terms: a website that keeps appearing across many customer questions, that
+        several AI models agree on, ranks at the top. Every website carries both signals so
+        you can see exactly <em>why</em> it ranked where it did:
+      </p>
+      <dl class="defs">
+        <div class="def"><dt>Queries</dt><dd>How many of your questions surfaced this site (breadth).</dd></div>
+        <div class="def"><dt>Models</dt><dd>The most AI models that agreed on it within a single question (agreement).</dd></div>
+        <div class="def"><dt>Breadth</dt><dd>A High / Medium / Low badge — a quick read on how widely it appeared.</dd></div>
+        <div class="def"><dt>Score</dt><dd>An overall relevance score from 0 to 100.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="col">
+    <p class="kicker">The output</p>
+    <h2>What you get at the end</h2>
+    <p>A ranked table of recommended publishers, each showing:</p>
+    <dl class="defs">
+      <div class="def"><dt>Publisher</dt><dd>Website name and domain — e.g. <em>Vogue India — vogue.in.</em></dd></div>
+      <div class="def"><dt>Category</dt><dd>What kind of site it is — e.g. <em>Fashion &amp; Lifestyle.</em></dd></div>
+      <div class="def"><dt>Signals</dt><dd>Final score, breadth, and agreement, at a glance.</dd></div>
+      <div class="def"><dt>Reason</dt><dd>A short note on why it was recommended.</dd></div>
+      <div class="def"><dt>Details</dt><dd>A drill-down showing exactly which questions surfaced it and which models named it.</dd></div>
+    </dl>
+    <p style="margin-top:1.3rem;">
+      The whole list <strong>exports to CSV</strong> for spreadsheets, decks, or sharing — and every
+      recommendation is fully traceable. No black box.
+    </p>
+  </section>
+
+  <section>
+    <div class="col"><p class="kicker">Worked example</p>
+      <h2>The skincare campaign, all the way through</h2>
+    </div>
+    <ol class="walk">
+      <li><strong>Brief.</strong> Premium organic skincare, women 25–40, Indian metros, awareness.</li>
+      <li><strong>Drafted questions.</strong> ~30 across three models — from "Best organic skincare for women in their 30s in India?" to "Which websites review clean beauty brands?"</li>
+      <li><strong>Your review.</strong> You keep the 12 sharpest, tweak two, and add one of your own: "Which sites review vegan skincare?"</li>
+      <li><strong>Website discovery.</strong> For each of those 13 questions, three models each list the websites they'd consult.</li>
+      <li><strong>Final ranking.</strong> <em>Vogue India</em> and <em>Nykaa</em> appear for almost every question and are named by all three models — so they top the list. Niche sites that appeared once or twice rank lower. You export and present.</li>
+    </ol>
+    <div class="note">
+      <div class="rail" aria-hidden="true"></div>
+      <p>
+        The output is <strong>defensible</strong>: for any website, you can show the exact questions
+        and models behind it.
+      </p>
+    </div>
+  </section>
+
+  <section class="col">
+    <p class="kicker">Flexibility</p>
+    <h2>Tuned to the situation, no rebuild needed</h2>
+    <p>Three dials adjust how much ground AdScope covers:</p>
+    <dl class="defs">
+      <div class="def"><dt>Questions</dt><dd>How many questions each model drafts (default 10).</dd></div>
+      <div class="def"><dt>Websites</dt><dd>How many sites each model returns per question (default 10).</dd></div>
+      <div class="def"><dt>List size</dt><dd>How long the final list can be (default 50).</dd></div>
+    </dl>
+    <p style="margin-top:1.3rem;">
+      These can be set <strong>per campaign</strong> on the form, or globally in configuration. Bigger
+      numbers mean broader coverage but longer runs — a simple speed-versus-thoroughness dial.
+      A built-in <strong>Demo Mode</strong> runs the entire flow with realistic sample data and no live AI
+      calls — ideal for demonstrations and training without incurring cost.
+    </p>
+  </section>
+
+  <section class="col">
+    <p class="kicker">Trust</p>
+    <h2>Advisory and auditable, by design</h2>
+    <div class="trust">
+      <div class="ti"><span class="dot" aria-hidden="true"></span><p><strong>Human-in-the-loop.</strong> The system never runs end to end without your review of the questions. You steer what it investigates.</p></div>
+      <div class="ti"><span class="dot" aria-hidden="true"></span><p><strong>Full traceability.</strong> Every recommendation traces back to the specific questions and models that produced it.</p></div>
+      <div class="ti"><span class="dot" aria-hidden="true"></span><p><strong>Resilient.</strong> If one model fails or is slow, the others still produce results; a run only fails if everything fails, and partial gaps are flagged as "completed with warnings."</p></div>
+      <div class="ti"><span class="dot" aria-hidden="true"></span><p><strong>Honest about its nature.</strong> Recommendations are AI-generated and advisory. Suitability, audience data, pricing, availability, and brand safety must be verified by a qualified professional before any spend. AdScope does not invent traffic numbers or pricing.</p></div>
+    </div>
+    <div class="note">
+      <div class="rail" aria-hidden="true"></div>
+      <p>
+        Think of AdScope as a <strong>very well-read research assistant</strong> that rapidly surfaces
+        where the conversation is happening — with a human expert always making the final call.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="col"><p class="kicker">The pitch</p>
+      <h2>Why it matters, in three lines</h2>
+    </div>
+    <div class="pitch">
+      <div class="p"><span class="n">01</span><p><strong>Behaviour has shifted.</strong> Audiences increasingly ask AI assistants for recommendations.</p></div>
+      <div class="p"><span class="n">02</span><p><strong>AdScope reveals the trusted sites.</strong> It shows which websites those assistants surface for your category.</p></div>
+      <div class="p"><span class="n">03</span><p><strong>Transparent and controlled.</strong> Multiple models, a human in charge, and a ranked, exportable, defensible list.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col"><p class="kicker">Reference</p>
+      <h2>Glossary</h2>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Term</th><th>Plain meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Brief</td><td>The written description of the campaign you enter to start.</td></tr>
+          <tr><td>AI model / provider</td><td>An AI assistant engine (e.g. Gemini, Groq, OpenRouter) AdScope asks questions.</td></tr>
+          <tr><td>Query / question</td><td>A realistic question your target customer might ask an AI assistant.</td></tr>
+          <tr><td>Human review</td><td>The step where you edit, add, remove, or approve the questions before analysis.</td></tr>
+          <tr><td>Publisher / website</td><td>A site where advertising could be placed (e.g. Vogue India).</td></tr>
+          <tr><td>Agreement</td><td>How many AI models independently named the same website for a question.</td></tr>
+          <tr><td>Breadth</td><td>Across how many of your questions a website appeared.</td></tr>
+          <tr><td>Final score</td><td>An overall 0–100 relevance measure for a recommended website.</td></tr>
+          <tr><td>Consensus</td><td>Combining several models' answers to find what they concur on.</td></tr>
+          <tr><td>Demo Mode</td><td>A no-cost mode that runs the full flow using realistic sample data.</td></tr>
+          <tr><td>CSV export</td><td>A spreadsheet download of the final ranked list.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span class="brand">ADSCOPE</span>
+    <span>Advisory media-planning aid · Recommendations must be validated by an authorised professional before execution.</span>
+  </footer>
+
+</div>

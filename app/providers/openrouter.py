@@ -1,6 +1,6 @@
 import httpx
 
-from app.providers.base import SYSTEM_PROMPT, BaseProvider
+from app.providers.base import BaseProvider
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -8,7 +8,7 @@ API_URL = "https://openrouter.ai/api/v1/chat/completions"
 class OpenRouterProvider(BaseProvider):
     name = "openrouter"
 
-    async def _call_api(self, client: httpx.AsyncClient, prompt: str) -> str:
+    async def _call_api(self, client: httpx.AsyncClient, system_prompt: str, user_prompt: str) -> str:
         response = await client.post(
             API_URL,
             headers={
@@ -22,8 +22,8 @@ class OpenRouterProvider(BaseProvider):
                 "temperature": 0.4,
                 "response_format": {"type": "json_object"},
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
             },
         )

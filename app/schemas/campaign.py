@@ -13,6 +13,11 @@ class CampaignCreate(BaseModel):
     objective: str | None = Field(default=None, max_length=200)
     budget: str | None = Field(default=None, max_length=100)
 
+    # Optional per-campaign pipeline overrides; None uses the configured defaults.
+    queries_per_provider: int | None = Field(default=None, ge=1, le=20)
+    max_websites_per_query: int | None = Field(default=None, ge=1, le=25)
+    max_final_websites: int | None = Field(default=None, ge=1, le=200)
+
     @field_validator("client_name", "campaign_name", "briefing", "target_country")
     @classmethod
     def strip_required(cls, v: str) -> str:
@@ -25,6 +30,19 @@ class CampaignCreate(BaseModel):
             return None
         v = v.strip()
         return v or None
+
+    @field_validator(
+        "queries_per_provider", "max_websites_per_query", "max_final_websites", mode="before"
+    )
+    @classmethod
+    def blank_int_to_none(cls, v: object) -> object:
+        # Empty form fields arrive as "" - treat those as "use the default".
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s or None
+        return v
 
 
 class Recommendation(BaseModel):
@@ -74,3 +92,39 @@ class ProviderOutcome(BaseModel):
     recommendations: list[Recommendation] = []
     raw_response: str | None = None
     error_message: str | None = None
+
+
+class ProviderCallResult(BaseModel):
+    """Raw result of a single provider completion - transport-level only.
+
+    Providers now expose a generic ``complete(system, user)`` primitive that
+    returns raw text (or an error). Each service parses this text into whatever
+    schema that service needs, so the provider layer stays task-agnostic.
+    """
+
+    provider_name: str
+    success: bool
+    text: str | None = None
+    error_message: str | None = None
+
+
+class QueryGenerationResponse(BaseModel):
+    """Service-1 output from one provider: a list of audience-style queries."""
+
+    queries: list[str] = Field(default_factory=list)
+
+    @field_validator("queries", mode="before")
+    @classmethod
+    def coerce_queries(cls, v: object) -> object:
+        # Models sometimes return [{"query": "..."}] instead of ["..."].
+        if isinstance(v, list):
+            out: list[str] = []
+            for item in v:
+                if isinstance(item, str):
+                    out.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("query") or item.get("text") or item.get("prompt")
+                    if isinstance(text, str):
+                        out.append(text)
+            return out
+        return v

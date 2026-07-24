@@ -5,21 +5,14 @@ import httpx
 import pytest
 
 from app.config import Settings
-from app.entities.models import Campaign
 from app.providers.base import BaseProvider, extract_json
-from app.services.llm_service import NoProvidersConfiguredError, build_providers, run_providers
-
-VALID_PAYLOAD = '{"recommendations": [{"website_name": "A", "domain": "a.com", "score": 80}]}'
-
-
-def _campaign() -> Campaign:
-    return Campaign(
-        id=1,
-        client_name="Client",
-        campaign_name="Campaign",
-        briefing="A briefing that is long enough to be valid.",
-        target_country="India",
-    )
+from app.providers.registry import PROVIDER_REGISTRY
+from app.services.llm_service import (
+    NoProvidersConfiguredError,
+    build_providers,
+    gather_bounded,
+    require_providers,
+)
 
 
 class TestExtractJson:
@@ -52,7 +45,7 @@ class _StubProvider(BaseProvider):
         self._response = response
         self._error = error
 
-    async def _call_api(self, client, prompt):
+    async def _call_api(self, client, system_prompt, user_prompt):
         if self._error:
             raise self._error
         return self._response
@@ -65,87 +58,77 @@ def _http_error(status: int) -> httpx.HTTPStatusError:
 
 
 @pytest.mark.anyio
-async def test_provider_success():
-    outcome = await _StubProvider(response=VALID_PAYLOAD).generate(_campaign())
-
-    assert outcome.success is True
-    assert len(outcome.recommendations) == 1
-    assert outcome.recommendations[0].domain == "a.com"
+async def test_complete_success_returns_raw_text():
+    result = await _StubProvider(response='{"ok": true}').complete("sys", "user")
+    assert result.success is True
+    assert result.text == '{"ok": true}'
+    assert result.provider_name == "stub"
 
 
 @pytest.mark.anyio
-async def test_provider_timeout_is_a_failed_outcome():
-    outcome = await _StubProvider(error=httpx.TimeoutException("timed out")).generate(_campaign())
-
-    assert outcome.success is False
-    assert "timed out" in outcome.error_message
+async def test_complete_timeout_is_a_failed_result():
+    result = await _StubProvider(error=httpx.TimeoutException("timed out")).complete("s", "u")
+    assert result.success is False
+    assert "timed out" in result.error_message
 
 
 @pytest.mark.anyio
 async def test_slow_provider_is_cut_off_at_the_configured_timeout():
-    """A provider that streams slowly must still be bound by LLM_TIMEOUT_SECONDS."""
-
     class _SlowProvider(_StubProvider):
-        async def _call_api(self, client, prompt):
-            await asyncio.sleep(5)  # far longer than the 1s timeout below
-            return VALID_PAYLOAD
+        async def _call_api(self, client, system_prompt, user_prompt):
+            await asyncio.sleep(5)
+            return "{}"
 
-    provider = _SlowProvider(response=VALID_PAYLOAD)
+    provider = _SlowProvider(response="{}")
     provider.timeout = 1
 
     started = time.perf_counter()
-    outcome = await provider.generate(_campaign())
+    result = await provider.complete("s", "u")
     elapsed = time.perf_counter() - started
 
-    assert outcome.success is False
-    assert "timed out" in outcome.error_message
-    assert elapsed < 3  # cut off at ~1s, not after the full 5s sleep
+    assert result.success is False
+    assert "timed out" in result.error_message
+    assert elapsed < 3
 
 
 @pytest.mark.anyio
-async def test_provider_auth_failure_message():
-    outcome = await _StubProvider(error=_http_error(401)).generate(_campaign())
-
-    assert outcome.success is False
-    assert "Authentication failed" in outcome.error_message
-
-
-@pytest.mark.anyio
-async def test_provider_rate_limit_message():
-    outcome = await _StubProvider(error=_http_error(429)).generate(_campaign())
-
-    assert outcome.success is False
-    assert "Rate limit" in outcome.error_message
+async def test_complete_auth_failure_message():
+    result = await _StubProvider(error=_http_error(401)).complete("s", "u")
+    assert result.success is False
+    assert "Authentication failed" in result.error_message
 
 
 @pytest.mark.anyio
-async def test_provider_invalid_json_is_a_failed_outcome_not_a_crash():
-    outcome = await _StubProvider(response="I cannot help with that.").generate(_campaign())
-
-    assert outcome.success is False
-    assert "invalid" in outcome.error_message.lower()
-    assert outcome.raw_response == "I cannot help with that."
+async def test_complete_rate_limit_message():
+    result = await _StubProvider(error=_http_error(429)).complete("s", "u")
+    assert result.success is False
+    assert "Rate limit" in result.error_message
 
 
 @pytest.mark.anyio
-async def test_provider_schema_violation_is_a_failed_outcome():
-    # score above 100 violates the schema
-    outcome = await _StubProvider(
-        response='{"recommendations": [{"website_name": "A", "domain": "a.com", "score": 500}]}'
-    ).generate(_campaign())
+async def test_gather_bounded_preserves_order_and_bounds_concurrency():
+    active = 0
+    peak = 0
 
-    assert outcome.success is False
+    async def job(value: int) -> int:
+        nonlocal active, peak
+        active += 1
+        peak = max(peak, active)
+        await asyncio.sleep(0.01)
+        active -= 1
+        return value
 
-
-@pytest.mark.anyio
-async def test_json_wrapped_in_prose_still_succeeds():
-    outcome = await _StubProvider(response=f"Sure!\n```json\n{VALID_PAYLOAD}\n```").generate(_campaign())
-
-    assert outcome.success is True
+    results = await gather_bounded((job(i) for i in range(10)), limit=3)
+    assert results == list(range(10))
+    assert peak <= 3
 
 
 class TestBuildProviders:
-    def test_demo_mode_enables_all_three(self):
+    def test_registry_covers_the_configured_types(self):
+        types = {c.type for c in Settings().provider_configs()}
+        assert types <= set(PROVIDER_REGISTRY)
+
+    def test_demo_mode_enables_all_configured(self):
         providers = build_providers(Settings(demo_mode=True))
         assert [p.name for p in providers] == ["gemini", "groq", "openrouter"]
 
@@ -159,15 +142,7 @@ class TestBuildProviders:
         assert build_providers(settings) == []
 
 
-@pytest.mark.anyio
-async def test_run_providers_errors_when_none_configured():
+def test_require_providers_errors_when_none_configured():
     settings = Settings(demo_mode=False, gemini_api_key="", groq_api_key="", openrouter_api_key="")
     with pytest.raises(NoProvidersConfiguredError):
-        await run_providers(_campaign(), settings)
-
-
-@pytest.mark.anyio
-async def test_single_provider_is_enough():
-    settings = Settings(demo_mode=False, groq_api_key="key", gemini_api_key="", openrouter_api_key="")
-    providers = build_providers(settings)
-    assert len(providers) == 1
+        require_providers(settings)

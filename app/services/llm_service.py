@@ -1,18 +1,18 @@
+from __future__ import annotations
+
 import asyncio
 import logging
+from collections.abc import Awaitable, Iterable
+from typing import TypeVar
 
 from app.config import Settings
-from app.entities.models import Campaign
 from app.providers.base import BaseProvider
 from app.providers.demo import DemoProvider
-from app.providers.gemini import GeminiProvider
-from app.providers.groq import GroqProvider
-from app.providers.openrouter import OpenRouterProvider
-from app.schemas.campaign import ProviderOutcome
+from app.providers.registry import PROVIDER_REGISTRY
 
 logger = logging.getLogger(__name__)
 
-PROVIDER_NAMES = ("gemini", "groq", "openrouter")
+T = TypeVar("T")
 
 
 class NoProvidersConfiguredError(RuntimeError):
@@ -20,36 +20,49 @@ class NoProvidersConfiguredError(RuntimeError):
 
 
 def build_providers(settings: Settings) -> list[BaseProvider]:
-    """Return the enabled providers. Demo mode always enables all three."""
+    """Instantiate the enabled providers from the config-driven registry.
+
+    Demo mode returns a DemoProvider for every configured entry so the whole
+    pipeline runs offline.
+    """
+    configs = settings.provider_configs()
+
     if settings.demo_mode:
-        return [DemoProvider(name, settings.llm_timeout_seconds) for name in PROVIDER_NAMES]
+        return [DemoProvider(c.label, settings.llm_timeout_seconds) for c in configs]
 
     providers: list[BaseProvider] = []
-    if settings.gemini_api_key:
+    for c in configs:
+        if not c.enabled or not c.api_key:
+            continue
+        provider_cls = PROVIDER_REGISTRY.get(c.type)
+        if provider_cls is None:
+            logger.warning("Unknown provider type %r - skipping", c.type)
+            continue
         providers.append(
-            GeminiProvider(settings.gemini_api_key, settings.gemini_model, settings.llm_timeout_seconds)
-        )
-    if settings.groq_api_key:
-        providers.append(
-            GroqProvider(settings.groq_api_key, settings.groq_model, settings.llm_timeout_seconds)
-        )
-    if settings.openrouter_api_key:
-        providers.append(
-            OpenRouterProvider(
-                settings.openrouter_api_key, settings.openrouter_model, settings.llm_timeout_seconds
-            )
+            provider_cls(c.api_key, c.model, settings.llm_timeout_seconds, name=c.label)
         )
     return providers
 
 
-async def run_providers(campaign: Campaign, settings: Settings) -> list[ProviderOutcome]:
-    """Query every enabled provider concurrently and return one outcome each."""
+def require_providers(settings: Settings) -> list[BaseProvider]:
     providers = build_providers(settings)
     if not providers:
         raise NoProvidersConfiguredError(
             "No LLM providers are configured. Add an API key or enable DEMO_MODE."
         )
+    return providers
 
-    logger.info("Running %d provider(s) for campaign %s", len(providers), campaign.id)
-    outcomes = await asyncio.gather(*(p.generate(campaign) for p in providers))
-    return list(outcomes)
+
+async def gather_bounded(coros: Iterable[Awaitable[T]], limit: int) -> list[T]:
+    """Run awaitables concurrently, but never more than ``limit`` at once.
+
+    Service-2 fans out to (queries x providers) calls, so an unbounded gather
+    would hammer provider rate limits. Order of results matches input order.
+    """
+    semaphore = asyncio.Semaphore(max(1, limit))
+
+    async def _run(coro: Awaitable[T]) -> T:
+        async with semaphore:
+            return await coro
+
+    return list(await asyncio.gather(*(_run(c) for c in coros)))
