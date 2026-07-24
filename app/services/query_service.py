@@ -58,10 +58,14 @@ def _parse_queries(text: str | None, limit: int) -> list[str]:
 
 async def generate_queries(campaign: Campaign, settings: Settings) -> QueryGenerationOutput:
     providers = require_providers(settings)
-    system = query_system_prompt(settings.queries_per_provider)
+    # Per-campaign override wins over the configured default.
+    per_provider = campaign.queries_per_provider or settings.queries_per_provider
+    system = query_system_prompt(per_provider)
     user = build_brief_context(campaign)
 
-    logger.info("service-1: generating queries with %d provider(s)", len(providers))
+    logger.info(
+        "service-1: generating %d queries with %d provider(s)", per_provider, len(providers)
+    )
     results = await gather_bounded(
         (p.complete(system, user, task=TASK_GENERATE_QUERIES) for p in providers),
         settings.llm_concurrency,
@@ -71,7 +75,7 @@ async def generate_queries(campaign: Campaign, settings: Settings) -> QueryGener
     for result in results:
         if not result.success:
             continue
-        for text in _parse_queries(result.text, settings.queries_per_provider):
+        for text in _parse_queries(result.text, per_provider):
             drafts.append(QueryDraft(text=text, source_provider=result.provider_name))
 
     return QueryGenerationOutput(drafts=drafts, provider_results=results)

@@ -29,6 +29,9 @@ def create_campaign(db: Session, data: CampaignCreate) -> Campaign:
         target_country=data.target_country,
         objective=data.objective,
         budget=data.budget,
+        queries_per_provider=data.queries_per_provider,
+        max_websites_per_query=data.max_websites_per_query,
+        max_final_websites=data.max_final_websites,
         status=CampaignStatus.PROCESSING,
         phase=CampaignPhase.GENERATING_QUERIES,
     )

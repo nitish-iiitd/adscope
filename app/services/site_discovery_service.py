@@ -67,9 +67,19 @@ def _parse_sites(text: str | None, limit: int) -> list[Recommendation]:
     return recs
 
 
-async def discover_sites(queries: list[GeneratedQuery], settings: Settings) -> DiscoveryOutput:
+async def discover_sites(
+    queries: list[GeneratedQuery],
+    settings: Settings,
+    *,
+    max_websites: int | None = None,
+    max_final: int | None = None,
+) -> DiscoveryOutput:
+    # Per-campaign overrides fall back to the configured defaults.
+    max_websites = max_websites or settings.max_websites_per_query
+    max_final = max_final or settings.max_final_websites
+
     providers = require_providers(settings)
-    system = site_system_prompt(settings.max_websites_per_query)
+    system = site_system_prompt(max_websites)
 
     # Fan out to (queries x providers). Keep the (query, provider) pairing so the
     # flat result list can be regrouped by query afterwards.
@@ -101,7 +111,7 @@ async def discover_sites(queries: list[GeneratedQuery], settings: Settings) -> D
         pairs = per_query_jobs.get(id(query), [])
         outcomes: list[ProviderOutcome] = []
         for _query, result in pairs:
-            recs = _parse_sites(result.text, settings.max_websites_per_query) if result.success else []
+            recs = _parse_sites(result.text, max_websites) if result.success else []
             success = result.success and bool(recs)
             if success:
                 successful_calls += 1
@@ -126,7 +136,7 @@ async def discover_sites(queries: list[GeneratedQuery], settings: Settings) -> D
             )
         per_query_consensus.append((query.text, build_consensus(outcomes)))
 
-    final_entries = aggregate_across_queries(per_query_consensus, settings.max_final_websites)
+    final_entries = aggregate_across_queries(per_query_consensus, max_final)
 
     return DiscoveryOutput(
         query_results=query_records,

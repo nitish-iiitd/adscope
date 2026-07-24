@@ -42,6 +42,10 @@ class Campaign(Base):
     target_country: Mapped[str] = mapped_column(String(100))
     objective: Mapped[str | None] = mapped_column(String(200), nullable=True)
     budget: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Per-campaign pipeline overrides; NULL falls back to the Settings defaults.
+    queries_per_provider: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_websites_per_query: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_final_websites: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default=CampaignStatus.PROCESSING)
     phase: Mapped[str] = mapped_column(String(30), default=CampaignPhase.GENERATING_QUERIES)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

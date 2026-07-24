@@ -83,8 +83,9 @@ async def run_site_discovery(campaign_id: int, settings: Settings) -> None:
     """Service-2 background runner: refined queries -> final ranked websites."""
     db: Session = SessionLocal()
     try:
+        campaign = repo.get_campaign(db, campaign_id)
         queries = repo.get_selected_queries(db, campaign_id)
-        if not queries:
+        if campaign is None or not queries:
             repo.set_phase(
                 db,
                 campaign_id,
@@ -96,7 +97,12 @@ async def run_site_discovery(campaign_id: int, settings: Settings) -> None:
             return
 
         try:
-            output = await discover_sites(queries, settings)
+            output = await discover_sites(
+                queries,
+                settings,
+                max_websites=campaign.max_websites_per_query,
+                max_final=campaign.max_final_websites,
+            )
         except NoProvidersConfiguredError:
             repo.set_phase(
                 db,

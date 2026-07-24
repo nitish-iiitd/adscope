@@ -27,6 +27,9 @@ FIELD_LABELS = {
     "target_country": "Target country",
     "objective": "Campaign objective",
     "budget": "Budget",
+    "queries_per_provider": "Queries per model",
+    "max_websites_per_query": "Websites per query",
+    "max_final_websites": "Final website list size",
 }
 
 
@@ -57,6 +60,10 @@ def _first_error_message(exc: ValidationError) -> str:
     if kind == "string_too_long":
         limit = error.get("ctx", {}).get("max_length", "the allowed")
         return f"{label} must be {limit} characters or fewer."
+    if kind == "int_parsing":
+        return f"{label} must be a whole number."
+    if kind in ("greater_than_equal", "less_than_equal"):
+        return f"{label} is outside the allowed range."
     return f"{label} is invalid."
 
 

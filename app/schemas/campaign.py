@@ -13,6 +13,11 @@ class CampaignCreate(BaseModel):
     objective: str | None = Field(default=None, max_length=200)
     budget: str | None = Field(default=None, max_length=100)
 
+    # Optional per-campaign pipeline overrides; None uses the configured defaults.
+    queries_per_provider: int | None = Field(default=None, ge=1, le=20)
+    max_websites_per_query: int | None = Field(default=None, ge=1, le=25)
+    max_final_websites: int | None = Field(default=None, ge=1, le=200)
+
     @field_validator("client_name", "campaign_name", "briefing", "target_country")
     @classmethod
     def strip_required(cls, v: str) -> str:
@@ -25,6 +30,19 @@ class CampaignCreate(BaseModel):
             return None
         v = v.strip()
         return v or None
+
+    @field_validator(
+        "queries_per_provider", "max_websites_per_query", "max_final_websites", mode="before"
+    )
+    @classmethod
+    def blank_int_to_none(cls, v: object) -> object:
+        # Empty form fields arrive as "" - treat those as "use the default".
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s or None
+        return v
 
 
 class Recommendation(BaseModel):

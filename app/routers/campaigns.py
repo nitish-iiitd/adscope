@@ -52,6 +52,9 @@ async def create_campaign(
     target_country: str = Form(""),
     objective: str = Form(""),
     budget: str = Form(""),
+    queries_per_provider: str = Form(""),
+    max_websites_per_query: str = Form(""),
+    max_final_websites: str = Form(""),
 ):
     form = {
         "client_name": client_name,
@@ -60,6 +63,9 @@ async def create_campaign(
         "target_country": target_country,
         "objective": objective,
         "budget": budget,
+        "queries_per_provider": queries_per_provider,
+        "max_websites_per_query": max_websites_per_query,
+        "max_final_websites": max_final_websites,
     }
     try:
         campaign = create_campaign_row(db, form)

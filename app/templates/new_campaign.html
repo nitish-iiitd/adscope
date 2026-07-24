@@ -60,6 +60,42 @@
             </div>
           </div>
 
+          <details class="mt-4">
+            <summary class="fw-medium small text-primary" style="cursor:pointer">
+              Advanced: pipeline sizes (optional)
+            </summary>
+            <p class="text-muted small mt-2 mb-3">
+              Leave blank to use the configured defaults. Larger numbers mean more AI calls and
+              longer runs.
+            </p>
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label for="queries_per_provider" class="form-label">Queries per model</label>
+                <input type="number" min="1" max="20" class="form-control"
+                       id="queries_per_provider" name="queries_per_provider"
+                       placeholder="Default: {{ defaults.queries_per_provider }}"
+                       value="{{ form.get('queries_per_provider', '') }}">
+                <div class="form-text">1&ndash;20. Combined queries = models &times; this.</div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label for="max_websites_per_query" class="form-label">Websites per query</label>
+                <input type="number" min="1" max="25" class="form-control"
+                       id="max_websites_per_query" name="max_websites_per_query"
+                       placeholder="Default: {{ defaults.max_websites_per_query }}"
+                       value="{{ form.get('max_websites_per_query', '') }}">
+                <div class="form-text">1&ndash;25 sites each model returns per query.</div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label for="max_final_websites" class="form-label">Final list size</label>
+                <input type="number" min="1" max="200" class="form-control"
+                       id="max_final_websites" name="max_final_websites"
+                       placeholder="Default: {{ defaults.max_final_websites }}"
+                       value="{{ form.get('max_final_websites', '') }}">
+                <div class="form-text">1&ndash;200 websites in the final ranking.</div>
+              </div>
+            </div>
+          </details>
+
           <div class="d-flex flex-wrap gap-2 mt-4">
             <button type="submit" class="btn btn-primary" id="submit-btn">
               <i class="bi bi-stars me-1"></i>Generate audience queries
