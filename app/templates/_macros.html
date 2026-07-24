@@ -1,0 +1,38 @@
+{# Shared Jinja macros: status pill + phase stepper. #}
+
+{% macro status_pill(campaign) -%}
+  {%- if campaign.phase == 'awaiting_review' -%}
+    <span class="pill pill--review"><span class="pill__dot"></span>Awaiting review</span>
+  {%- elif campaign.phase in ('generating_queries', 'discovering_sites') -%}
+    <span class="pill pill--processing"><span class="pill__dot"></span>Processing</span>
+  {%- elif campaign.status == 'completed' -%}
+    <span class="pill pill--completed"><span class="pill__dot"></span>Completed</span>
+  {%- elif campaign.status == 'completed_with_warnings' -%}
+    <span class="pill pill--warnings"><span class="pill__dot"></span>Completed with warnings</span>
+  {%- elif campaign.status == 'failed' -%}
+    <span class="pill pill--failed"><span class="pill__dot"></span>Failed</span>
+  {%- else -%}
+    <span class="pill pill--empty"><span class="pill__dot"></span>{{ campaign.status }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro _check() -%}
+<svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.5l2.5 2.5 4.5-5"/></svg>
+{%- endmacro %}
+
+{# stage: 1..5 current step. working: show "Working…" on the active step. #}
+{% macro stepper(stage, working=false, active_label='Now') -%}
+{% set steps = [('Brief','You'), ('Draft queries','AI'), ('Review','You'), ('Discover','AI'), ('Publishers','Result')] %}
+<div class="stepper mb-5">
+  {% for name, pend in steps %}
+    {% set i = loop.index %}
+    <div class="step{% if i < stage %} step--done{% endif %}{% if i == stage %} step--active{% if working %} step--working{% endif %}{% endif %}{% if i == 3 %} step--gate{% endif %}">
+      <span class="step__num">{% if i < stage %}{{ _check() }}{% else %}{{ i }}{% endif %}</span>
+      <div class="step__text">
+        <div class="step__name">{{ name }}</div>
+        <div class="step__state">{% if i < stage %}Done{% elif i == stage %}{{ 'Working…' if working else active_label }}{% else %}{{ pend }}{% endif %}</div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{%- endmacro %}

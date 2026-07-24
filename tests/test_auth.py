@@ -47,7 +47,7 @@ def test_health_is_public(client):
 def test_dashboard_accessible_after_login(auth_client):
     response = auth_client.get("/")
     assert response.status_code == 200
-    assert "Dashboard" in response.text
+    assert "Campaigns" in response.text
 
 
 def test_logout_clears_session(auth_client):

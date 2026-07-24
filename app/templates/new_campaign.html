@@ -1,122 +1,83 @@
 {% extends "base.html" %}
+{% from "_macros.html" import stepper %}
 {% block title %}New campaign &middot; {{ app_name }}{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-12 col-lg-9">
-    <div class="mb-4">
-      <h1 class="h4 fw-semibold mb-1">New campaign</h1>
-      <p class="text-muted small mb-0">
-        Describe the campaign. AdScope drafts the queries your audience would ask their AI
-        assistant, you review them, then it finds the websites those assistants would cite.
-      </p>
-    </div>
+<div class="breadcrumb"><a href="/">Campaigns</a><span class="breadcrumb__sep">/</span><span class="breadcrumb__cur">New campaign</span></div>
 
-    {% if error %}
-      <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <span>{{ error }}</span>
+{{ stepper(1, active_label='Now') }}
+
+<div class="page__head">
+  <div class="page__head-main">
+    <h1 class="page__title">New campaign</h1>
+    <p class="page__sub">Describe the brief. AdScope drafts the audience's likely AI questions for you to review.</p>
+  </div>
+</div>
+
+{% if error %}
+  <div class="alert alert--critical mb-5">
+    <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2.5L16.5 15.5H1.5L9 2.5Z"/><path d="M9 7.5v3.5M9 13.5h.01"/></svg>
+    <div class="alert__body"><div class="alert__title">Please fix this and try again</div><div class="alert__text">{{ error }}</div></div>
+  </div>
+{% endif %}
+
+<div class="card">
+  <div class="card__body">
+    <form id="campaign-form" method="post" action="/campaigns" novalidate>
+      <div class="field-row">
+        <div class="field"><label class="field__label" for="client_name">Client name</label>
+          <input class="input" id="client_name" name="client_name" maxlength="200" placeholder="e.g. Lumière Organics" value="{{ form.get('client_name', '') }}"></div>
+        <div class="field"><label class="field__label" for="campaign_name">Campaign name</label>
+          <input class="input" id="campaign_name" name="campaign_name" maxlength="200" placeholder="e.g. Monsoon Skincare Launch" value="{{ form.get('campaign_name', '') }}"></div>
       </div>
-    {% endif %}
 
-    <div class="card">
-      <div class="card-body p-4">
-        <form method="post" action="/campaigns" id="campaign-form" novalidate>
-          <div class="row g-3">
-            <div class="col-12 col-md-6">
-              <label for="client_name" class="form-label">Client name <span class="req">*</span></label>
-              <input type="text" class="form-control" id="client_name" name="client_name"
-                     maxlength="200" required value="{{ form.get('client_name', '') }}">
-            </div>
-            <div class="col-12 col-md-6">
-              <label for="campaign_name" class="form-label">Campaign name <span class="req">*</span></label>
-              <input type="text" class="form-control" id="campaign_name" name="campaign_name"
-                     maxlength="200" required value="{{ form.get('campaign_name', '') }}">
-            </div>
-
-            <div class="col-12">
-              <label for="briefing" class="form-label">Client briefing <span class="req">*</span></label>
-              <textarea class="form-control" id="briefing" name="briefing" rows="8" maxlength="5000"
-                        required placeholder="A premium organic skincare company wants to target women aged 25-40 in major Indian cities. The campaign objective is brand awareness. Recommend relevant websites and digital publishers where advertising may perform well.">{{ form.get('briefing', '') }}</textarea>
-              <div class="form-text">
-                Include audience, product category, positioning and any constraints. Minimum 20 characters.
-              </div>
-            </div>
-
-            <div class="col-12 col-md-4">
-              <label for="target_country" class="form-label">Target country <span class="req">*</span></label>
-              <input type="text" class="form-control" id="target_country" name="target_country"
-                     maxlength="100" required placeholder="India" value="{{ form.get('target_country', '') }}">
-            </div>
-            <div class="col-12 col-md-4">
-              <label for="objective" class="form-label">Campaign objective <span class="text-muted small">(optional)</span></label>
-              <input type="text" class="form-control" id="objective" name="objective"
-                     maxlength="200" placeholder="Brand awareness" value="{{ form.get('objective', '') }}">
-            </div>
-            <div class="col-12 col-md-4">
-              <label for="budget" class="form-label">Budget <span class="text-muted small">(optional)</span></label>
-              <input type="text" class="form-control" id="budget" name="budget"
-                     maxlength="100" placeholder="INR 20,00,000" value="{{ form.get('budget', '') }}">
-            </div>
-          </div>
-
-          <details class="mt-4">
-            <summary class="fw-medium small text-primary" style="cursor:pointer">
-              Advanced: pipeline sizes (optional)
-            </summary>
-            <p class="text-muted small mt-2 mb-3">
-              Leave blank to use the configured defaults. Larger numbers mean more AI calls and
-              longer runs.
-            </p>
-            <div class="row g-3">
-              <div class="col-12 col-md-4">
-                <label for="queries_per_provider" class="form-label">Queries per model</label>
-                <input type="number" min="1" max="20" class="form-control"
-                       id="queries_per_provider" name="queries_per_provider"
-                       placeholder="Default: {{ defaults.queries_per_provider }}"
-                       value="{{ form.get('queries_per_provider', '') }}">
-                <div class="form-text">1&ndash;20. Combined queries = models &times; this.</div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label for="max_websites_per_query" class="form-label">Websites per query</label>
-                <input type="number" min="1" max="25" class="form-control"
-                       id="max_websites_per_query" name="max_websites_per_query"
-                       placeholder="Default: {{ defaults.max_websites_per_query }}"
-                       value="{{ form.get('max_websites_per_query', '') }}">
-                <div class="form-text">1&ndash;25 sites each model returns per query.</div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label for="max_final_websites" class="form-label">Final list size</label>
-                <input type="number" min="1" max="200" class="form-control"
-                       id="max_final_websites" name="max_final_websites"
-                       placeholder="Default: {{ defaults.max_final_websites }}"
-                       value="{{ form.get('max_final_websites', '') }}">
-                <div class="form-text">1&ndash;200 websites in the final ranking.</div>
-              </div>
-            </div>
-          </details>
-
-          <div class="d-flex flex-wrap gap-2 mt-4">
-            <button type="submit" class="btn btn-primary" id="submit-btn">
-              <i class="bi bi-stars me-1"></i>Generate audience queries
-            </button>
-            <a href="/" class="btn btn-outline-secondary">Cancel</a>
-          </div>
-        </form>
+      <div class="field">
+        <label class="field__label" for="briefing">Client briefing</label>
+        <textarea class="textarea" id="briefing" name="briefing" maxlength="5000" style="min-height:150px"
+          placeholder="Paste the brief: product, audience, positioning, key messages, seasonality…">{{ form.get('briefing', '') }}</textarea>
+        <span class="field__hint">Include audience, product category, positioning and constraints. Minimum 20 characters.</span>
       </div>
-    </div>
 
-    <div id="loading-state" class="card mt-3 d-none">
-      <div class="card-body text-center p-5">
-        <div class="spinner-border text-primary mb-3" role="status">
-          <span class="visually-hidden">Loading</span>
+      <div class="field-row">
+        <div class="field"><label class="field__label" for="target_country">Target country</label>
+          <input class="input" id="target_country" name="target_country" maxlength="100" placeholder="e.g. India" value="{{ form.get('target_country', '') }}"></div>
+        <div class="field"><label class="field__label" for="objective">Objective <span class="field__opt">(optional)</span></label>
+          <input class="input" id="objective" name="objective" maxlength="200" placeholder="e.g. Awareness &amp; consideration" value="{{ form.get('objective', '') }}"></div>
+      </div>
+
+      <div class="field" style="max-width:320px"><label class="field__label" for="budget">Budget <span class="field__opt">(optional)</span></label>
+        <input class="input" id="budget" name="budget" maxlength="100" placeholder="e.g. ₹ 45,00,000" value="{{ form.get('budget', '') }}"></div>
+
+      <details class="collapse mb-5"{% if form.get('queries_per_provider') or form.get('max_websites_per_query') or form.get('max_final_websites') %} open{% endif %}>
+        <summary class="collapse__trigger">
+          <svg class="collapse__chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 2l4 4-4 4"/></svg>
+          Advanced: pipeline sizes <span class="field__opt" style="margin-left:auto;font-weight:400">optional</span>
+        </summary>
+        <div class="collapse__body">
+          <p class="field__hint mb-4">Tune how much the pipeline explores. Leave blank to use defaults. Larger numbers mean more AI calls and longer runs.</p>
+          <div class="field-row">
+            <div class="field"><label class="field__label" for="queries_per_provider">Queries per model</label>
+              <input class="input input--num" id="queries_per_provider" name="queries_per_provider" type="number" min="1" max="20" placeholder="{{ defaults.queries_per_provider }}" value="{{ form.get('queries_per_provider', '') }}"></div>
+            <div class="field"><label class="field__label" for="max_websites_per_query">Websites per query</label>
+              <input class="input input--num" id="max_websites_per_query" name="max_websites_per_query" type="number" min="1" max="25" placeholder="{{ defaults.max_websites_per_query }}" value="{{ form.get('max_websites_per_query', '') }}"></div>
+            <div class="field"><label class="field__label" for="max_final_websites">Final list size</label>
+              <input class="input input--num" id="max_final_websites" name="max_final_websites" type="number" min="1" max="200" placeholder="{{ defaults.max_final_websites }}" value="{{ form.get('max_final_websites', '') }}"></div>
+          </div>
         </div>
-        <h2 class="h6 fw-semibold mb-1">Preparing your campaign</h2>
-        <p class="text-muted small mb-0">
-          Setting up and drafting audience queries. You'll review them on the next screen.
-        </p>
+      </details>
+
+      <div class="row row--between row--wrap" style="gap:var(--sp-3)">
+        <span class="disclaimer" style="padding:0;max-width:44ch">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5M8 11h.01"/></svg>
+          Runs several AI models in parallel — drafting usually takes under a minute.
+        </span>
+        <div class="row gap-2">
+          <a class="btn btn--secondary" href="/">Cancel</a>
+          <button class="btn btn--primary" type="submit">Generate audience queries</button>
+        </div>
       </div>
-    </div>
+    </form>
   </div>
 </div>
 {% endblock %}

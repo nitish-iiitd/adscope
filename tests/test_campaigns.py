@@ -80,7 +80,7 @@ def test_review_page_lists_queries(auth_client, db):
     response = auth_client.get(f"/campaigns/{campaign_id}/review")
 
     assert response.status_code == 200
-    assert "Audience queries" in response.text
+    assert "Review audience queries" in response.text
     first_query = (
         db.query(GeneratedQuery).filter_by(campaign_id=campaign_id).order_by(GeneratedQuery.position).first()
     )
@@ -123,7 +123,7 @@ def test_results_page_renders(auth_client, db):
     assert "Verdant Skincare" in response.text
     assert "vogue.in" in response.text
     assert "Queries analysed" in response.text
-    assert "AI-generated recommendations are advisory" in response.text
+    assert "directional guidance for media planning" in response.text
     assert "Export CSV" in response.text
 
 

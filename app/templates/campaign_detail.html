@@ -1,179 +1,128 @@
 {% extends "base.html" %}
+{% from "_macros.html" import stepper, status_pill %}
 {% block title %}{{ campaign.campaign_name }} &middot; {{ app_name }}{% endblock %}
 
-{# Condition must live INSIDE the block (see review.html): a child block always
-   overrides the parent, so only render the refresh tag while still processing. #}
+{# Poll only while service-2 is discovering (condition inside the block). #}
 {% block head %}{% if processing %}<meta http-equiv="refresh" content="4">{% endif %}{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
-  <div>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb small mb-1">
-        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Results</li>
-      </ol>
-    </nav>
-    <h1 class="h4 fw-semibold mb-1">{{ campaign.campaign_name }}</h1>
-    <p class="text-muted small mb-0">{{ campaign.client_name }}</p>
-  </div>
-  <a href="/campaigns/new" class="btn btn-outline-primary btn-sm">
-    <i class="bi bi-plus-circle me-1"></i>New Campaign
-  </a>
-</div>
+<div class="breadcrumb"><a href="/">Campaigns</a><span class="breadcrumb__sep">/</span><span class="breadcrumb__cur">{{ campaign.campaign_name }}</span></div>
 
 {% if processing %}
-  <div class="card mb-3">
-    <div class="card-body text-center p-5">
-      <div class="spinner-border text-primary mb-3" role="status">
-        <span class="visually-hidden">Loading</span>
-      </div>
-      <h2 class="h6 fw-semibold mb-1">Discovering websites</h2>
-      <p class="text-muted small mb-0">
-        Asking every AI model which websites it would consult for each of your
-        {{ selected_query_count }} selected quer{{ 'y' if selected_query_count == 1 else 'ies' }},
-        then ranking the combined results. This page refreshes automatically.
-      </p>
-    </div>
-  </div>
-
-  {% if selected_queries %}
-    <div class="card">
-      <div class="card-header bg-white fw-semibold py-3">
-        Queries being analysed ({{ selected_query_count }})
-      </div>
-      <ul class="list-group list-group-flush">
-        {% for q in selected_queries %}
-          <li class="list-group-item small">{{ q.text }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
-{% else %}
-
-{% if campaign.status == 'failed' %}
-  <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
-    <i class="bi bi-exclamation-octagon-fill mt-1"></i>
-    <div>
-      <div class="fw-semibold">Analysis failed</div>
-      <div class="small">{{ campaign.error_message or 'No recommendations could be generated.' }}</div>
-    </div>
-  </div>
-{% elif campaign.status == 'completed_with_warnings' %}
-  <div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
-    <i class="bi bi-exclamation-triangle-fill mt-1"></i>
-    <div>
-      <div class="fw-semibold">Completed with warnings</div>
-      <div class="small">
-        Some provider calls failed. Results below are based on the calls that responded.
-      </div>
-    </div>
-  </div>
-{% endif %}
-
-<div class="row g-3 mb-4">
-  <div class="col-12 col-lg-8">
-    <div class="card mb-3">
-      <div class="card-header bg-white fw-semibold py-3">Campaign briefing</div>
-      <div class="card-body">
-        <p class="briefing-text mb-0">{{ campaign.briefing }}</p>
-      </div>
-    </div>
-
-    {% if selected_queries %}
+  {{ stepper(4, working=true) }}
+  <div class="split">
+    <div class="stack-5">
       <div class="card">
-        <div class="card-header bg-white fw-semibold py-3">
-          Queries analysed ({{ selected_query_count }})
+        <div class="card__body">
+          <div class="loading-state" style="padding-top:var(--sp-6);padding-bottom:var(--sp-6)">
+            <div class="loading-state__viz">
+              <div class="loading-state__ring"></div>
+              <div class="loading-state__core"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></div>
+            </div>
+            <h2 class="loading-state__title">Discovering websites</h2>
+            <p class="loading-state__text">For each approved query, AdScope is asking the AI models which sites they'd cite — then combining the answers into one ranked list of publishers by breadth and agreement.</p>
+            <span class="loading-state__poll"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Auto-refreshing · analysing {{ selected_query_count }} quer{{ 'y' if selected_query_count == 1 else 'ies' }}</span>
+          </div>
+          <div style="max-width:520px;margin:0 auto"><div class="progress progress--indeterminate"><div class="progress__bar"></div></div></div>
         </div>
-        <ul class="list-group list-group-flush">
+      </div>
+    </div>
+
+    <aside class="card">
+      <div class="card__head"><div class="card__head-main"><div class="card__title">Queries being analysed</div><div class="card__meta">{{ selected_query_count }} approved · read-only</div></div></div>
+      <div class="card__body card__body--tight">
+        <ul class="stack-3" style="list-style:none;padding:0;margin:0">
           {% for q in selected_queries %}
-            <li class="list-group-item small">{{ q.text }}</li>
+            <li class="text-sm" style="color:var(--text-2)">{{ q.text }}</li>
           {% endfor %}
         </ul>
+      </div>
+    </aside>
+  </div>
+{% else %}
+  {{ stepper(5, active_label='Ready') }}
+
+  <div class="page__head">
+    <div class="page__head-main">
+      <h1 class="page__title">{{ campaign.campaign_name }}</h1>
+      <p class="page__sub">{{ campaign.client_name }} · {{ status_pill(campaign) }}</p>
+    </div>
+    {% if rows %}
+      <div class="page__actions">
+        <a class="btn btn--secondary" href="/campaigns/{{ campaign.id }}/export.csv">
+          <svg class="btn__ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M4.5 6.5L8 10l3.5-3.5M3 13h10"/></svg>Export CSV
+        </a>
       </div>
     {% endif %}
   </div>
 
-  <div class="col-12 col-lg-4">
-    <div class="card h-100">
-      <div class="card-header bg-white fw-semibold py-3">Analysis summary</div>
-      <div class="card-body">
-        <dl class="summary-list mb-0">
-          <dt>Target country</dt>
-          <dd>{{ campaign.target_country }}</dd>
+  {% if campaign.status == 'failed' %}
+    <div class="alert alert--critical mb-5">
+      <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 5.5v4M9 12.5h.01"/></svg>
+      <div class="alert__body"><div class="alert__title">Analysis failed</div><div class="alert__text">{{ campaign.error_message or 'No recommendations could be generated.' }}</div></div>
+    </div>
+  {% elif campaign.status == 'completed_with_warnings' %}
+    <div class="alert alert--warning mb-5">
+      <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2.5L16.5 15.5H1.5L9 2.5Z"/><path d="M9 7.5v3.5M9 13.5h.01"/></svg>
+      <div class="alert__body"><div class="alert__title">Completed with warnings</div><div class="alert__text">Some provider calls failed. Rankings reflect consensus across the providers that responded.</div></div>
+    </div>
+  {% endif %}
 
-          {% if campaign.objective %}
-            <dt>Objective</dt>
-            <dd>{{ campaign.objective }}</dd>
-          {% endif %}
-          {% if campaign.budget %}
-            <dt>Budget</dt>
-            <dd>{{ campaign.budget }}</dd>
-          {% endif %}
-
-          <dt>Queries analysed</dt>
-          <dd>{{ selected_query_count }}</dd>
-
-          <dt>Unique websites</dt>
-          <dd>{{ unique_websites }}</dd>
-
-          <dt>Analysis date</dt>
-          <dd>{{ (campaign.completed_at or campaign.created_at).strftime('%d %b %Y, %H:%M UTC') }}</dd>
-
-          <dt>Successful providers</dt>
-          <dd>
-            {% if successful_providers %}
-              {% for provider in successful_providers %}
-                <span class="badge text-bg-success text-capitalize me-1">{{ provider }}</span>
+  <div class="split mb-5">
+    <div class="stack-5">
+      <div class="card">
+        <div class="card__head"><div class="card__head-main"><div class="card__title">Campaign briefing</div></div></div>
+        <div class="card__body"><p class="text-sm" style="color:var(--text-2)">{{ campaign.briefing }}</p></div>
+      </div>
+      {% if selected_queries %}
+        <div class="card">
+          <div class="card__head"><div class="card__head-main"><div class="card__title">Queries analysed</div><div class="card__meta">{{ selected_query_count }} approved quer{{ 'y' if selected_query_count == 1 else 'ies' }} sent to discovery</div></div></div>
+          <div class="card__body card__body--tight">
+            <ul class="stack-3" style="list-style:none;padding:0;margin:0">
+              {% for q in selected_queries %}
+                <li class="text-sm" style="color:var(--text-2)">{{ q.text }}</li>
               {% endfor %}
-            {% else %}
-              <span class="text-muted small">None</span>
-            {% endif %}
-          </dd>
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+    </div>
 
-          <dt>Failed providers</dt>
-          <dd>
-            {% if failed_providers %}
-              {% for provider in failed_providers %}
-                <span class="badge text-bg-danger text-capitalize me-1"
-                      title="{{ provider.error_message or 'Provider failed' }}">
-                  {{ provider.provider_name }}
-                </span>
-              {% endfor %}
-              <div class="text-muted small mt-1">Hover a badge for the reason.</div>
-            {% else %}
-              <span class="text-muted small">None</span>
-            {% endif %}
-          </dd>
+    <aside class="card">
+      <div class="card__head"><div class="card__head-main"><div class="card__title">Analysis summary</div></div></div>
+      <div class="card__body">
+        <dl class="def-list">
+          <dt>Target country</dt><dd class="def-list__text">{{ campaign.target_country }}</dd>
+          {% if campaign.objective %}<dt>Objective</dt><dd class="def-list__text">{{ campaign.objective }}</dd>{% endif %}
+          {% if campaign.budget %}<dt>Budget</dt><dd class="def-list__text">{{ campaign.budget }}</dd>{% endif %}
+          <dt>Queries analysed</dt><dd>{{ selected_query_count }}</dd>
+          <dt>Unique websites</dt><dd>{{ unique_websites }}</dd>
+          <dt>Analysis date</dt><dd class="def-list__text">{{ (campaign.completed_at or campaign.created_at).strftime('%d %b %Y') }}</dd>
         </dl>
+        <hr class="divider-h">
+        <div class="text-xs muted mb-4" style="font-weight:600;letter-spacing:.04em;text-transform:uppercase">Successful providers</div>
+        <div class="badge-group mb-4">
+          {% for provider in successful_providers %}<span class="badge badge--ok">{{ provider }}</span>{% else %}<span class="text-xs muted">None</span>{% endfor %}
+        </div>
+        <div class="text-xs muted mb-4" style="font-weight:600;letter-spacing:.04em;text-transform:uppercase">Failed providers</div>
+        <div class="badge-group">
+          {% for provider in failed_providers %}<span class="badge badge--fail" title="{{ provider.error_message or 'Provider failed' }}">{{ provider.provider_name }}</span>{% else %}<span class="text-xs muted">None</span>{% endfor %}
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  {% if rows %}
+    {% include "results.html" %}
+  {% else %}
+    <div class="card">
+      <div class="empty empty--in-card">
+        <div class="empty__viz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M8 10.5h5"/></svg></div>
+        <div class="empty__title">No recommendations available</div>
+        <p class="empty__text">This campaign did not produce any publisher recommendations. Try broadening the brief or adding more audience queries.</p>
+        <a class="btn btn--primary" href="/campaigns/new">Start a new campaign</a>
       </div>
     </div>
-  </div>
-</div>
-
-{% if rows %}
-  {% include "results.html" %}
-{% else %}
-  <div class="card">
-    <div class="card-body text-center p-5">
-      <div class="empty-icon mb-3"><i class="bi bi-search"></i></div>
-      <h2 class="h6 fw-semibold mb-1">No recommendations available</h2>
-      <p class="text-muted small mb-3">
-        This campaign did not produce any publisher recommendations.
-      </p>
-      <a href="/campaigns/new" class="btn btn-primary btn-sm">Try another briefing</a>
-    </div>
-  </div>
-{% endif %}
-
-<div class="alert alert-secondary d-flex align-items-start gap-2 mt-4 mb-0" role="note">
-  <i class="bi bi-info-circle-fill mt-1"></i>
-  <div class="small">
-    AI-generated recommendations are advisory. Website suitability, audience information, pricing,
-    availability, and brand safety must be verified by an authorised marketing professional before
-    campaign execution.
-  </div>
-</div>
-
+  {% endif %}
 {% endif %}
 {% endblock %}

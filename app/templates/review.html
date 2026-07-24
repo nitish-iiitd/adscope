@@ -1,152 +1,83 @@
 {% extends "base.html" %}
+{% from "_macros.html" import stepper %}
 {% block title %}Review queries &middot; {{ app_name }}{% endblock %}
 
-{# Poll only while service-1 is still generating. The condition must live INSIDE
-   the block: a child {% block %} overrides the parent regardless of any
-   surrounding {% if %}, so gating has to happen at render time in here. #}
+{# Poll only while service-1 is still generating (condition must live inside the block). #}
 {% block head %}{% if generating %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
-  <div>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb small mb-1">
-        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Review queries</li>
-      </ol>
-    </nav>
-    <h1 class="h4 fw-semibold mb-1">{{ campaign.campaign_name }}</h1>
-    <p class="text-muted small mb-0">{{ campaign.client_name }}</p>
-  </div>
-</div>
+<div class="breadcrumb"><a href="/">Campaigns</a><span class="breadcrumb__sep">/</span><span class="breadcrumb__cur">{{ campaign.campaign_name }}</span></div>
 
 {% if generating %}
+  {{ stepper(2, working=true) }}
   <div class="card">
-    <div class="card-body text-center p-5">
-      <div class="spinner-border text-primary mb-3" role="status">
-        <span class="visually-hidden">Loading</span>
+    <div class="card__body">
+      <div class="loading-state">
+        <div class="loading-state__viz">
+          <div class="loading-state__ring"></div>
+          <div class="loading-state__core"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3"/></svg></div>
+        </div>
+        <h2 class="loading-state__title">Generating audience queries</h2>
+        <p class="loading-state__text">AdScope is asking several AI models what your audience would ask their own assistant about this brief, then merging the questions. You'll review and edit the drafts next.</p>
+        <span class="loading-state__poll"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Auto-refreshing · this page updates on its own</span>
       </div>
-      <h2 class="h6 fw-semibold mb-1">Generating audience queries</h2>
-      <p class="text-muted small mb-0">
-        Each AI model is drafting the questions your target audience might ask their own
-        assistant. This page refreshes automatically.
-      </p>
     </div>
   </div>
 {% else %}
+  {{ stepper(3, active_label='Your turn') }}
+  <div class="page__head"><div class="page__head-main">
+    <h1 class="page__title">Review audience queries</h1>
+    <p class="page__sub">{{ campaign.campaign_name }} · {{ campaign.client_name }}</p>
+  </div></div>
+
   {% if error %}
-    <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
-      <i class="bi bi-exclamation-triangle-fill"></i>
-      <span>{{ error }}</span>
+    <div class="alert alert--critical mb-5">
+      <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 8v4M9 5.5h.01"/></svg>
+      <div class="alert__body"><div class="alert__text">{{ error }}</div></div>
     </div>
   {% endif %}
 
-  <div class="alert alert-secondary d-flex align-items-start gap-2" role="note">
-    <i class="bi bi-info-circle-fill mt-1"></i>
-    <div class="small">
-      These queries were generated from the brief. Edit any wording, deselect the ones you
-      don't want, remove them, or add your own. Selected queries are sent to the AI models to
-      discover the websites they'd consult.
+  <div class="alert alert--info mb-5">
+    <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 8v4M9 5.5h.01"/></svg>
+    <div class="alert__body">
+      <div class="alert__title">This is the human step. Curate before AdScope spends compute.</div>
+      <div class="alert__text">The models drafted <b>{{ queries|length }} questions</b> your audience is likely to ask AI assistants. Edit wording, remove off-target ones, or add your own. Only <b>selected</b> queries are sent to website discovery.</div>
     </div>
   </div>
 
-  <form method="post" action="/campaigns/{{ campaign.id }}/queries" id="review-form">
-    <div class="card mb-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-        <span class="fw-semibold">Audience queries</span>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="add-query">
-          <i class="bi bi-plus-circle me-1"></i>Add query
-        </button>
-      </div>
-      <div class="card-body">
-        <div id="query-rows">
-          {% for q in queries %}
-            <div class="query-row d-flex align-items-start gap-2 mb-2" data-index="{{ loop.index0 }}">
-              <div class="form-check mt-2">
-                <input class="form-check-input" type="checkbox" name="selected_{{ loop.index0 }}"
-                       {% if q.is_selected %}checked{% endif %} aria-label="Select query">
-              </div>
-              <div class="flex-grow-1">
-                <textarea class="form-control" name="text_{{ loop.index0 }}" rows="2"
-                          maxlength="500">{{ q.text }}</textarea>
-                <div class="form-text">
-                  {% if q.is_custom %}Custom{% else %}from {{ q.source_provider or 'model' }}{% endif %}
-                </div>
-                <input type="hidden" name="source_{{ loop.index0 }}" value="{{ q.source_provider or '' }}">
-                <input type="hidden" name="custom_{{ loop.index0 }}" value="{{ '1' if q.is_custom else '0' }}">
-              </div>
-              <button type="button" class="btn btn-sm btn-outline-danger mt-1 remove-query"
-                      aria-label="Remove query"><i class="bi bi-trash"></i></button>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
+  <form method="post" action="/campaigns/{{ campaign.id }}/queries">
+    {% set all_selected = queries and (queries | selectattr('is_selected') | list | length == queries | length) %}
+    <div class="qeditor__bar">
+      <label class="qeditor__selall"><input type="checkbox" class="checkbox" data-select-all {% if all_selected %}checked{% endif %}>Select all</label>
+      <span class="navbar__spacer"></span>
+      <span class="qeditor__count"><b data-count-selected>0</b> of <span data-count-total>0</span> selected</span>
+      <button type="button" class="btn btn--secondary btn--sm" data-add-query><svg class="btn__ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3v10M3 8h10"/></svg>Add query</button>
     </div>
 
-    <div class="d-flex flex-wrap gap-2">
-      <button type="submit" class="btn btn-primary">
-        <i class="bi bi-stars me-1"></i>Find websites for selected queries
-      </button>
-      <a href="/" class="btn btn-outline-secondary">Cancel</a>
+    <ul class="query-list" id="query-list" data-next-index="{{ queries|length }}">
+      {% for q in queries %}
+        {% set i = loop.index0 %}
+        <li class="qrow{% if q.is_selected %} qrow--sel{% endif %}">
+          <label class="qrow__check"><input type="checkbox" class="checkbox" name="selected_{{ i }}" {% if q.is_selected %}checked{% endif %} aria-label="Select query"></label>
+          <div class="qrow__main">
+            <textarea class="qrow__input" name="text_{{ i }}" rows="1" maxlength="500" aria-label="Audience query">{{ q.text }}</textarea>
+            <div class="qrow__meta">
+              <span class="qrow__source{% if q.is_custom %} qrow__source--custom{% endif %}">{% if q.is_custom %}Custom{% else %}from {{ q.source_provider or 'model' }}{% endif %}</span>
+            </div>
+            <input type="hidden" name="source_{{ i }}" value="{{ q.source_provider or '' }}">
+            <input type="hidden" name="custom_{{ i }}" value="{{ '1' if q.is_custom else '0' }}">
+          </div>
+          <button type="button" class="btn btn--ghost btn--icon qrow__remove" aria-label="Remove query" title="Remove"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+        </li>
+      {% endfor %}
+    </ul>
+
+    <div class="review-actions">
+      <span class="text-sm muted"><b class="mono" data-count-selected style="color:var(--accent-text)">0</b> queries will be sent to discovery</span>
+      <span class="navbar__spacer"></span>
+      <a class="btn btn--ghost" href="/">Save &amp; exit</a>
+      <button class="btn btn--primary" type="submit" data-submit-selected>Find websites for selected queries<svg class="btn__ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
     </div>
   </form>
-
-  <template id="query-row-template">
-    <div class="query-row d-flex align-items-start gap-2 mb-2">
-      <div class="form-check mt-2">
-        <input class="form-check-input" type="checkbox" checked aria-label="Select query">
-      </div>
-      <div class="flex-grow-1">
-        <textarea class="form-control" rows="2" maxlength="500" placeholder="Type a custom query"></textarea>
-        <div class="form-text">Custom</div>
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-danger mt-1 remove-query"
-              aria-label="Remove query"><i class="bi bi-trash"></i></button>
-    </div>
-  </template>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-{% if not generating %}
-<script>
-(function () {
-  "use strict";
-  const rows = document.getElementById("query-rows");
-  const template = document.getElementById("query-row-template");
-  const addBtn = document.getElementById("add-query");
-  if (!rows || !template || !addBtn) return;
-
-  // Continue indexing after the server-rendered rows so field names stay unique.
-  let nextIndex = rows.querySelectorAll(".query-row").length;
-
-  function wireRemove(row) {
-    const btn = row.querySelector(".remove-query");
-    if (btn) btn.addEventListener("click", () => row.remove());
-  }
-
-  rows.querySelectorAll(".query-row").forEach(wireRemove);
-
-  addBtn.addEventListener("click", function () {
-    const i = nextIndex++;
-    const frag = template.content.cloneNode(true);
-    const row = frag.querySelector(".query-row");
-    row.dataset.index = i;
-    row.querySelector("input[type=checkbox]").name = "selected_" + i;
-    const textarea = row.querySelector("textarea");
-    textarea.name = "text_" + i;
-
-    const custom = document.createElement("input");
-    custom.type = "hidden";
-    custom.name = "custom_" + i;
-    custom.value = "1";
-    row.querySelector(".flex-grow-1").appendChild(custom);
-
-    wireRemove(row);
-    rows.appendChild(row);
-    textarea.focus();
-  });
-})();
-</script>
 {% endif %}
 {% endblock %}

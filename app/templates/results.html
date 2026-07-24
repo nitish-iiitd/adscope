@@ -1,114 +1,135 @@
-{# Final ranked websites + per-website query drill-down. Included by campaign_detail.html. #}
+{# Final ranked publishers table + per-website side-panel drill-down.
+   Included by campaign_detail.html. Expects: campaign, rows [{rec, details}]. #}
 
-{% macro agreement_badge(agreement) -%}
-  {% if agreement == 'High' %}
-    <span class="badge text-bg-success">High</span>
-  {% elif agreement == 'Medium' %}
-    <span class="badge text-bg-info">Medium</span>
-  {% elif agreement == 'Single model' %}
-    <span class="badge text-bg-secondary">Single query</span>
-  {% else %}
-    <span class="badge text-bg-light border">Low</span>
-  {% endif %}
+{% macro favicon(name) -%}
+  <span class="site__favicon">{{ (name or '?')[0] | upper }}</span>
 {%- endmacro %}
 
-<div class="card">
-  <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
-    <span class="fw-semibold">Recommended publishers</span>
-    <a href="/campaigns/{{ campaign.id }}/export.csv" class="btn btn-sm btn-outline-primary">
-      <i class="bi bi-download me-1"></i>Export CSV
-    </a>
-  </div>
+{% macro score_meter(score) -%}
+  <span class="score"><span class="score__num">{{ score | round | int }}</span><span class="score__meter"><span class="score__fill" style="width:{{ score }}%"></span></span></span>
+{%- endmacro %}
 
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead>
-        <tr>
-          <th style="width:60px">Rank</th>
-          <th>Website</th>
-          <th>Domain</th>
-          <th>Category</th>
-          <th style="width:110px">Final score</th>
-          <th style="width:90px" title="How many analysed queries surfaced this site">Queries</th>
-          <th style="width:90px" title="Most AI models that agreed on this site within a single query">Models</th>
-          <th style="width:120px">Breadth</th>
-          <th>Main reason</th>
-          <th class="text-end" style="width:100px">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-          <tr>
-            <td class="text-muted">{{ loop.index }}</td>
-            <td class="fw-medium">{{ row.rec.website_name }}</td>
-            <td><span class="text-muted small">{{ row.rec.domain }}</span></td>
-            <td><span class="badge text-bg-light border fw-normal">{{ row.rec.category or '-' }}</span></td>
-            <td>
-              <span class="score-pill {{ 'score-high' if row.rec.final_score >= 80 else ('score-mid' if row.rec.final_score >= 60 else 'score-low') }}">
-                {{ '%g'|format(row.rec.final_score) }}
-              </span>
-            </td>
-            <td class="text-muted">{{ row.rec.query_count }}</td>
-            <td class="text-muted">{{ row.rec.model_count }}</td>
-            <td>{{ agreement_badge(row.rec.agreement) }}</td>
-            <td class="small text-muted reason-cell">{{ row.rec.combined_reason or '-' }}</td>
-            <td class="text-end">
-              <button type="button" class="btn btn-sm btn-outline-secondary"
-                      data-bs-toggle="modal" data-bs-target="#rec-{{ row.rec.id }}">
-                Details
-              </button>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+{% macro sig_breadth(value) -%}
+  <span class="sig sig--breadth"><span class="sig__glyph">
+    {%- for h in [6, 9, 12, 15] -%}
+      <span class="sig__bar{% if loop.index <= value %} sig__bar--on{% endif %}" style="height:{{ h }}px"></span>
+    {%- endfor -%}
+  </span><span class="sig__val">{{ value }}</span></span>
+{%- endmacro %}
+
+{% macro sig_agreement(value) -%}
+  <span class="sig sig--agreement"><span class="sig__glyph">
+    {%- for h in [8, 12, 16] -%}
+      <span class="sig__bar{% if loop.index <= value %} sig__bar--on{% endif %}" style="height:{{ h }}px"></span>
+    {%- endfor -%}
+  </span><span class="sig__val">{{ value }}</span></span>
+{%- endmacro %}
+
+{% macro breadth_badge(agreement) -%}
+  {%- if agreement == 'High' -%}
+    <span class="breadth breadth--high"><span class="breadth__tick"><i></i><i></i><i></i></span>High</span>
+  {%- elif agreement == 'Medium' -%}
+    <span class="breadth breadth--medium"><span class="breadth__tick"><i></i><i></i><i></i></span>Medium</span>
+  {%- else -%}
+    <span class="breadth breadth--low"><span class="breadth__tick"><i></i><i></i><i></i></span>Low</span>
+  {%- endif -%}
+{%- endmacro %}
+
+<div class="row row--between row--wrap mb-4" style="align-items:flex-end">
+  <div>
+    <h2 style="margin-bottom:6px">Recommended publishers</h2>
+    <div class="motif-legend">
+      <span class="motif-legend__item"><span class="motif-legend__swatch motif-legend__swatch--breadth"></span><b style="color:var(--signal-text)">Breadth</b> — how many queries surfaced the site</span>
+      <span class="motif-legend__item"><span class="motif-legend__swatch motif-legend__swatch--agreement"></span><b style="color:var(--accent-text)">Agreement</b> — how many models named it</span>
+    </div>
   </div>
+  <span class="mono text-xs muted">{{ rows|length }} site{{ '' if rows|length == 1 else 's' }} ranked</span>
+</div>
+
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th>Website</th>
+        <th>Category</th>
+        <th style="width:150px">Final score</th>
+        <th title="Breadth: how many queries surfaced this site">Queries</th>
+        <th title="Agreement: how many AI models named this site">Models</th>
+        <th>Breadth</th>
+        <th style="min-width:240px">Main reason</th>
+        <th style="text-align:right"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        {% set rec = row.rec %}
+        <tr class="table__row-open" data-open-panel="rec-{{ rec.id }}">
+          <td class="rank">{{ '%02d' | format(loop.index) }}</td>
+          <td><div class="site">{{ favicon(rec.website_name) }}<div><div class="site__name">{{ rec.website_name }}</div><div class="site__domain">{{ rec.domain }}</div></div></div></td>
+          <td>{{ rec.category or '—' }}</td>
+          <td>{{ score_meter(rec.final_score) }}</td>
+          <td>{{ sig_breadth(rec.query_count) }}</td>
+          <td>{{ sig_agreement(rec.model_count) }}</td>
+          <td>{{ breadth_badge(rec.agreement) }}</td>
+          <td class="reason">{{ rec.combined_reason or '—' }}</td>
+          <td style="text-align:right"><button type="button" class="btn btn--ghost btn--sm" data-open-panel="rec-{{ rec.id }}">Details</button></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="disclaimer" style="max-width:80ch;margin-top:var(--sp-4)">
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5M8 11h.01"/></svg>
+  <span>AdScope predicts where AI assistants are likely to send your audience, based on model responses at analysis time. Results are directional guidance for media planning — not a guarantee of citation, traffic, or placement availability. Validate against your own media data before committing spend.</span>
 </div>
 
 {% for row in rows %}
-  <div class="modal fade" id="rec-{{ row.rec.id }}" tabindex="-1"
-       aria-labelledby="rec-{{ row.rec.id }}-label" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <h5 class="modal-title mb-0" id="rec-{{ row.rec.id }}-label">{{ row.rec.website_name }}</h5>
-            <span class="text-muted small">{{ row.rec.domain }}</span>
+  {% set rec = row.rec %}
+  <div class="scrim" id="rec-{{ rec.id }}" data-open="false">
+    <aside class="panel" role="dialog" aria-modal="true" aria-labelledby="rec-{{ rec.id }}-title">
+      <div class="panel__head">
+        <div class="site" style="align-items:flex-start">
+          <span class="site__favicon" style="width:38px;height:38px;font-size:17px">{{ (rec.website_name or '?')[0] | upper }}</span>
+          <div class="panel__head-main">
+            <h2 id="rec-{{ rec.id }}-title" style="font-size:var(--fs-h3);font-family:var(--font-sans);font-weight:600;margin-bottom:2px">{{ rec.website_name }}</h2>
+            <div class="site__domain" style="font-size:var(--fs-sm)">{{ rec.domain }}{% if rec.category %} · {{ rec.category }}{% endif %}</div>
           </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <div class="d-flex flex-wrap gap-3 mb-4">
-            <div><div class="stat-label">Final score</div><div class="fw-semibold">{{ '%g'|format(row.rec.final_score) }}</div></div>
-            <div><div class="stat-label">Queries surfacing it</div><div class="fw-semibold">{{ row.rec.query_count }}</div></div>
-            <div><div class="stat-label">Max models / query</div><div class="fw-semibold">{{ row.rec.model_count }}</div></div>
-            <div><div class="stat-label">Breadth</div><div>{{ agreement_badge(row.rec.agreement) }}</div></div>
-          </div>
-
-          <p class="text-muted small mb-2">Queries that surfaced this website:</p>
-          {% for detail in row.details %}
-            <div class="provider-block mb-3">
-              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                <span class="fw-medium small">{{ detail.query_text }}</span>
-                <span class="badge text-bg-light border">
-                  {{ '%g'|format(detail.score) }}
-                </span>
-              </div>
-              <div class="small text-muted">
-                Recommended by:
-                {% for provider in detail.providers %}
-                  <span class="badge text-bg-light border text-capitalize me-1">{{ provider }}</span>
-                {% else %}
-                  <span>-</span>
-                {% endfor %}
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-        </div>
+        <button type="button" class="btn btn--ghost btn--icon panel__close" data-close-panel aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
       </div>
-    </div>
+      <div class="panel__body">
+        <div class="metric-row">
+          <div class="metric metric--score"><div class="metric__label">Final score</div><div class="metric__value">{{ rec.final_score | round | int }}</div></div>
+          <div class="metric metric--breadth"><div class="metric__label"><span class="motif-legend__swatch motif-legend__swatch--breadth" style="width:9px;height:9px;border-radius:2px"></span>Breadth</div><div class="metric__value">{{ rec.query_count }}<span style="font-size:.9rem;color:var(--text-3)"> queries</span></div></div>
+          <div class="metric metric--agreement"><div class="metric__label"><span class="motif-legend__swatch motif-legend__swatch--agreement" style="width:9px;height:9px;border-radius:2px"></span>Agreement</div><div class="metric__value">{{ rec.model_count }}<span style="font-size:.9rem;color:var(--text-3)"> models</span></div></div>
+        </div>
+
+        <div class="alert alert--info mb-5" style="padding:11px 13px">
+          <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 8v4M9 5.5h.01"/></svg>
+          <div class="alert__body"><div class="alert__text">No black box — here's exactly which audience questions surfaced this site, and which models named it for each.</div></div>
+        </div>
+
+        <div class="eyebrow mb-4">Per-query breakdown</div>
+        {% for detail in row.details %}
+          <div class="qbreak">
+            <div class="qbreak__q">{{ detail.query_text }}</div>
+            <div class="qbreak__models">
+              <span class="qbreak__label">Named by</span>
+              {% for provider in detail.providers %}
+                <span class="model-chip">{{ provider }}</span>
+              {% else %}
+                <span class="muted text-xs">—</span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="panel__foot">
+        <a class="btn btn--secondary flex-1" href="https://{{ rec.domain }}" target="_blank" rel="noopener">Visit {{ rec.domain }} ↗</a>
+        <button type="button" class="btn btn--ghost" data-close-panel>Close</button>
+      </div>
+    </aside>
   </div>
 {% endfor %}
