@@ -80,11 +80,41 @@ async def test_discover_sites_produces_final_ranking():
     ]
     output = await discover_sites(queries, settings)
 
-    assert output.total_calls == 2 * 3  # queries x providers
+    assert output.total_calls == 2 * 3  # queries x providers x 1 type (website default)
     assert output.successful_calls > 0
-    assert output.final_entries
-    assert all(e.query_count >= 1 for e in output.final_entries)
+    website_entries = output.final_by_type["website"]
+    assert website_entries
+    assert all(e.query_count >= 1 for e in website_entries)
     # Vogue is in every demo provider set, so it should surface.
-    assert any(e.domain == "vogue.in" for e in output.final_entries)
+    assert any(e.domain == "vogue.in" for e in website_entries)
     # Intermediate per-query results are recorded for drill-down.
     assert len(output.query_results) == output.total_calls
+
+
+@pytest.mark.anyio
+async def test_discover_sites_supports_multiple_publisher_types():
+    settings = Settings(demo_mode=True)
+    queries = [
+        GeneratedQuery(id=1, text="best organic skincare in India?"),
+        GeneratedQuery(id=2, text="clean beauty review sites?"),
+    ]
+    output = await discover_sites(
+        queries, settings, publisher_types=["website", "youtube", "app"]
+    )
+
+    # queries x providers x 3 types.
+    assert output.total_calls == 2 * 3 * 3
+    assert set(output.final_by_type) == {"website", "youtube", "app"}
+    assert output.final_by_type["website"]
+    assert output.final_by_type["youtube"]
+    assert output.final_by_type["app"]
+    # YouTube entries are tagged and keyed by channel handle locator.
+    yt = output.final_by_type["youtube"]
+    assert all(e.publisher_type == "youtube" for e in yt)
+    assert all(e.domain.startswith("youtube.com/") for e in yt)
+    # App entries carry a platform (handle) and a clickable store URL.
+    apps = output.final_by_type["app"]
+    assert all(e.publisher_type == "app" for e in apps)
+    assert all(e.url.startswith("http") for e in apps)
+    # Nykaa appears in every demo provider set, so it should surface.
+    assert any(e.domain == "nykaa" for e in apps)

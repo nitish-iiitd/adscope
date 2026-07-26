@@ -1,11 +1,14 @@
 import pytest
 
+from app.entities.models import PublisherType
 from app.schemas.campaign import ProviderOutcome, Recommendation
 from app.services.consensus_service import (
     ConsensusEntry,
     aggregate_across_queries,
     build_consensus,
+    normalize_app,
     normalize_domain,
+    normalize_youtube,
 )
 
 
@@ -23,6 +26,109 @@ from app.services.consensus_service import (
 )
 def test_normalize_domain(raw, expected):
     assert normalize_domain(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("@Veritasium", "youtube.com/@veritasium"),
+        ("Veritasium", "youtube.com/@veritasium"),
+        ("https://www.youtube.com/@Veritasium", "youtube.com/@veritasium"),
+        ("youtube.com/@veritasium?sub_confirmation=1", "youtube.com/@veritasium"),
+        ("https://m.youtube.com/c/Veritasium/videos", "youtube.com/@veritasium"),
+        ("youtube.com/channel/UC123", "youtube.com/channel/uc123"),
+        ("", ""),
+    ],
+)
+def test_normalize_youtube(raw, expected):
+    assert normalize_youtube(raw) == expected
+
+
+def _yt_rec(handle: str, score: float, name: str = "Chan") -> Recommendation:
+    return Recommendation(
+        publisher_type=PublisherType.YOUTUBE,
+        website_name=name,
+        domain=f"youtube.com/{handle}",
+        handle=handle,
+        score=score,
+    )
+
+
+def test_youtube_consensus_dedupes_by_handle():
+    # Same channel expressed as a handle vs a full URL must merge into one entry.
+    outcomes = [
+        _outcome("gemini", [_yt_rec("@Foo", 80)]),
+        _outcome(
+            "groq",
+            [
+                Recommendation(
+                    publisher_type=PublisherType.YOUTUBE,
+                    website_name="Chan",
+                    domain="https://youtube.com/@foo",
+                    handle="",
+                    score=90,
+                )
+            ],
+        ),
+    ]
+    entries = build_consensus(outcomes, PublisherType.YOUTUBE)
+
+    assert len(entries) == 1
+    assert entries[0].domain == "youtube.com/@foo"
+    assert entries[0].model_count == 2
+    assert entries[0].publisher_type == PublisherType.YOUTUBE
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Google Maps", "google-maps"),
+        ("Nykaa", "nykaa"),
+        ("  Instagram!  ", "instagram"),
+        ("", ""),
+    ],
+)
+def test_normalize_app(raw, expected):
+    assert normalize_app(raw) == expected
+
+
+def test_app_consensus_dedupes_by_name_and_keeps_store_url():
+    # Same app from two providers (different platform/store URL) merges into one.
+    outcomes = [
+        _outcome(
+            "gemini",
+            [
+                Recommendation(
+                    publisher_type=PublisherType.APP,
+                    website_name="Nykaa",
+                    domain="https://play.google.com/store/apps/details?id=com.fsn.nykaa",
+                    handle="Android",
+                    score=80,
+                )
+            ],
+        ),
+        _outcome(
+            "groq",
+            [
+                Recommendation(
+                    publisher_type=PublisherType.APP,
+                    website_name="Nykaa",
+                    domain="https://apps.apple.com/app/nykaa/id123",
+                    handle="iOS",
+                    score=90,
+                )
+            ],
+        ),
+    ]
+    entries = build_consensus(outcomes, PublisherType.APP)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.domain == "nykaa"  # normalized name slug is the key
+    assert entry.model_count == 2
+    assert entry.publisher_type == PublisherType.APP
+    # URL comes from the highest-scoring provider's store listing.
+    assert entry.url == "https://apps.apple.com/app/nykaa/id123"
 
 
 def _rec(domain: str, score: float, name: str = "Site") -> Recommendation:

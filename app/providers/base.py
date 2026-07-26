@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 # uses them to decide which canned payload to return.
 TASK_GENERATE_QUERIES = "generate_queries"
 TASK_DISCOVER_SITES = "discover_sites"
+TASK_DISCOVER_YOUTUBE = "discover_youtube"
+TASK_DISCOVER_APP = "discover_app"
 
 
 def extract_json(text: str) -> dict:

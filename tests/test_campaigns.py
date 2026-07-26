@@ -164,8 +164,10 @@ def test_csv_export(auth_client, db):
     rows = list(csv.reader(io.StringIO(response.text)))
     assert rows[0] == [
         "Rank",
-        "Website name",
-        "Domain",
+        "Publisher type",
+        "Name",
+        "Locator",
+        "Handle",
         "Category",
         "Final score",
         "Query count",
@@ -217,8 +219,10 @@ def test_site_discovery_failure_marks_campaign_failed(auth_client, db, monkeypat
     from app.services import campaign_service
     from app.services.site_discovery_service import DiscoveryOutput
 
-    async def empty_discovery(queries, settings):
-        return DiscoveryOutput(query_results=[], final_entries=[], total_calls=3, successful_calls=0)
+    async def empty_discovery(queries, settings, **kwargs):
+        return DiscoveryOutput(
+            query_results=[], final_by_type={}, total_calls=3, successful_calls=0
+        )
 
     monkeypatch.setattr(campaign_service, "discover_sites", empty_discovery)
 

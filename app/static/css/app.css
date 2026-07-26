@@ -682,6 +682,18 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .checkbox:checked::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px;
   border: solid var(--text-inv); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 
+/* Publisher-type checkbox group (New Campaign form). */
+.checkgroup { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+.checkopt { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: var(--r-sm); cursor: pointer; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+.checkopt:hover { border-color: var(--border-strong); }
+.checkopt:has(.checkbox:checked) { border-color: var(--accent); background: var(--accent-soft, rgba(79,70,229,.06)); }
+.checkopt__body { display: flex; flex-direction: column; gap: 2px; }
+.checkopt__title { font-weight: 600; font-size: var(--fs-sm); color: var(--text-1); }
+.checkopt__desc { font-size: var(--fs-xs); color: var(--text-3); }
+.checkopt--disabled { opacity: .55; cursor: not-allowed; }
+.checkopt--disabled:hover { border-color: var(--border); }
+
 /* 18. RESPONSIVE ---------------------------------------------------------- */
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; }

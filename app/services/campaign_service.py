@@ -100,6 +100,7 @@ async def run_site_discovery(campaign_id: int, settings: Settings) -> None:
             output = await discover_sites(
                 queries,
                 settings,
+                publisher_types=campaign.publisher_type_list,
                 max_websites=campaign.max_websites_per_query,
                 max_final=campaign.max_final_websites,
             )
@@ -116,18 +117,20 @@ async def run_site_discovery(campaign_id: int, settings: Settings) -> None:
 
         repo.save_query_results(db, campaign_id, output.query_results)
 
-        if not output.final_entries:
+        total_entries = sum(len(entries) for entries in output.final_by_type.values())
+        if total_entries == 0:
             repo.set_phase(
                 db,
                 campaign_id,
                 CampaignPhase.FAILED,
                 status=CampaignStatus.FAILED,
-                error_message="No websites could be discovered for the selected queries.",
+                error_message="No publishers could be discovered for the selected queries.",
                 mark_completed=True,
             )
             return
 
-        repo.save_recommendations(db, campaign_id, output.final_entries)
+        for entries in output.final_by_type.values():
+            repo.save_recommendations(db, campaign_id, entries)
         failed_calls = output.total_calls - output.successful_calls
         status = resolve_status(output.successful_calls, failed_calls)
         repo.set_phase(
@@ -139,9 +142,9 @@ async def run_site_discovery(campaign_id: int, settings: Settings) -> None:
             mark_completed=True,
         )
         logger.info(
-            "Campaign %s completed: %d sites from %d/%d successful calls",
+            "Campaign %s completed: %d publishers from %d/%d successful calls",
             campaign_id,
-            len(output.final_entries),
+            total_entries,
             output.successful_calls,
             output.total_calls,
         )
@@ -174,8 +177,10 @@ def build_csv(db: Session, campaign_id: int) -> str:
     writer.writerow(
         [
             "Rank",
-            "Website name",
-            "Domain",
+            "Publisher type",
+            "Name",
+            "Locator",
+            "Handle",
             "Category",
             "Final score",
             "Query count",
@@ -188,8 +193,10 @@ def build_csv(db: Session, campaign_id: int) -> str:
         writer.writerow(
             [
                 rank,
+                rec.publisher_type,
                 rec.website_name,
-                rec.domain,
+                rec.url or rec.domain,
+                rec.handle or "",
                 rec.category or "",
                 rec.final_score,
                 rec.query_count,

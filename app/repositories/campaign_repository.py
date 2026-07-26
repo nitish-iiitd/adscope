@@ -29,6 +29,7 @@ def create_campaign(db: Session, data: CampaignCreate) -> Campaign:
         target_country=data.target_country,
         objective=data.objective,
         budget=data.budget,
+        publisher_types=",".join(data.publisher_types),
         queries_per_provider=data.queries_per_provider,
         max_websites_per_query=data.max_websites_per_query,
         max_final_websites=data.max_final_websites,
@@ -174,8 +175,11 @@ def save_recommendations(db: Session, campaign_id: int, entries: list[ConsensusE
         db.add(
             FinalRecommendation(
                 campaign_id=campaign_id,
+                publisher_type=entry.publisher_type,
                 website_name=entry.website_name,
                 domain=entry.domain,
+                handle=entry.handle,
+                url=entry.url,
                 category=entry.category,
                 final_score=entry.final_score,
                 query_count=entry.query_count,

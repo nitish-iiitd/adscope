@@ -7,7 +7,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.entities.models import Campaign, CampaignPhase
+from app.entities.models import (
+    PUBLISHER_TYPE_LABELS,
+    PUBLISHER_TYPE_NOUN,
+    Campaign,
+    CampaignPhase,
+)
 from app.handlers.campaign_handler import decode_provider_details
 from app.repositories import campaign_repository as repo
 from app.services.campaign_service import build_csv
@@ -54,6 +59,7 @@ async def campaign_detail(request: Request, campaign_id: int, db: Session = Depe
         {"rec": rec, "details": decode_provider_details(rec.provider_details)}
         for rec in recommendations
     ]
+    tabs = _group_by_type(rows, campaign.publisher_type_list)
     successful, failed = _provider_status(campaign)
     selected_queries = [q for q in campaign.queries if q.is_selected]
 
@@ -64,13 +70,41 @@ async def campaign_detail(request: Request, campaign_id: int, db: Session = Depe
             "campaign": campaign,
             "processing": processing,
             "rows": rows,
+            "tabs": tabs,
             "successful_providers": successful,
             "failed_providers": failed,
-            "unique_websites": len(recommendations),
+            "unique_publishers": len(recommendations),
             "selected_query_count": len(selected_queries),
             "selected_queries": selected_queries,
         },
     )
+
+
+def _group_by_type(rows: list[dict], type_order: list[str]) -> list[dict]:
+    """Split result rows into one tab per publisher type, in the campaign's order.
+
+    Types the campaign selected but that produced no rows are dropped; any
+    unexpected type still shows up (appended) rather than being silently lost.
+    """
+    by_type: dict[str, list[dict]] = {}
+    for row in rows:
+        by_type.setdefault(row["rec"].publisher_type, []).append(row)
+
+    ordered = list(type_order) + [t for t in by_type if t not in type_order]
+    tabs: list[dict] = []
+    for ptype in ordered:
+        type_rows = by_type.get(ptype)
+        if not type_rows:
+            continue
+        tabs.append(
+            {
+                "type": ptype,
+                "label": PUBLISHER_TYPE_LABELS.get(ptype, ptype.title()),
+                "noun": PUBLISHER_TYPE_NOUN.get(ptype, "Publisher"),
+                "rows": type_rows,
+            }
+        )
+    return tabs
 
 
 def _safe_filename(campaign_name: str, campaign_id: int) -> str:

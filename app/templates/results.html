@@ -1,5 +1,6 @@
-{# Final ranked publishers table + per-website side-panel drill-down.
-   Included by campaign_detail.html. Expects: campaign, rows [{rec, details}]. #}
+{# Final ranked publishers, one tab per publisher type, + per-row drill-down.
+   Included by campaign_detail.html. Expects: campaign, rows [{rec, details}],
+   tabs [{type, label, noun, rows}]. #}
 
 {% macro favicon(name) -%}
   <span class="site__favicon">{{ (name or '?')[0] | upper }}</span>
@@ -39,52 +40,89 @@
   <div>
     <h2 style="margin-bottom:6px">Recommended publishers</h2>
     <div class="motif-legend">
-      <span class="motif-legend__item"><span class="motif-legend__swatch motif-legend__swatch--breadth"></span><b style="color:var(--signal-text)">Breadth</b> — how many queries surfaced the site</span>
+      <span class="motif-legend__item"><span class="motif-legend__swatch motif-legend__swatch--breadth"></span><b style="color:var(--signal-text)">Breadth</b> — how many queries surfaced it</span>
       <span class="motif-legend__item"><span class="motif-legend__swatch motif-legend__swatch--agreement"></span><b style="color:var(--accent-text)">Agreement</b> — how many models named it</span>
     </div>
   </div>
-  <span class="mono text-xs muted">{{ rows|length }} site{{ '' if rows|length == 1 else 's' }} ranked</span>
+  <span class="mono text-xs muted">{{ rows|length }} publisher{{ '' if rows|length == 1 else 's' }} across {{ tabs|length }} type{{ '' if tabs|length == 1 else 's' }}</span>
 </div>
 
-<div class="table-wrap">
-  <table class="table">
-    <thead>
-      <tr>
-        <th style="width:36px">#</th>
-        <th>Website</th>
-        <th>Category</th>
-        <th style="width:150px">Final score</th>
-        <th title="Breadth: how many queries surfaced this site">Queries</th>
-        <th title="Agreement: how many AI models named this site">Models</th>
-        <th>Breadth</th>
-        <th style="min-width:240px">Main reason</th>
-        <th style="text-align:right"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-        {% set rec = row.rec %}
-        <tr class="table__row-open" data-open-panel="rec-{{ rec.id }}">
-          <td class="rank">{{ '%02d' | format(loop.index) }}</td>
-          <td><div class="site">{{ favicon(rec.website_name) }}<div><div class="site__name">{{ rec.website_name }}</div><div class="site__domain">{{ rec.domain }}</div></div></div></td>
-          <td>{{ rec.category or '—' }}</td>
-          <td>{{ score_meter(rec.final_score) }}</td>
-          <td>{{ sig_breadth(rec.query_count) }}</td>
-          <td>{{ sig_agreement(rec.model_count) }}</td>
-          <td>{{ breadth_badge(rec.agreement) }}</td>
-          <td class="reason">{{ rec.combined_reason or '—' }}</td>
-          <td style="text-align:right"><button type="button" class="btn btn--secondary btn--sm" data-open-panel="rec-{{ rec.id }}">Details<svg class="btn__ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px"><path d="M6 4l4 4-4 4"/></svg></button></td>
-        </tr>
+{# --- CSS-only tabs: one radio per type drives which panel shows. --- #}
+<div class="ptabs">
+  {% for tab in tabs %}
+    <input type="radio" name="ptab" id="ptab-{{ tab.type }}" class="ptabs__radio"{% if loop.first %} checked{% endif %}>
+  {% endfor %}
+
+  {% if tabs|length > 1 %}
+    <div class="ptabs__nav" role="tablist">
+      {% for tab in tabs %}
+        <label class="ptabs__tab" for="ptab-{{ tab.type }}" role="tab">{{ tab.label }}<span class="ptabs__count">{{ tab.rows|length }}</span></label>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
+  {% endif %}
+
+  <div class="ptabs__panels">
+    {% for tab in tabs %}
+      <section class="ptabs__panel" id="ptab-panel-{{ tab.type }}" role="tabpanel">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width:36px">#</th>
+                <th>{{ tab.noun }}</th>
+                <th>Category</th>
+                <th style="width:150px">Final score</th>
+                <th title="Breadth: how many queries surfaced this">Queries</th>
+                <th title="Agreement: how many AI models named this">Models</th>
+                <th>Breadth</th>
+                <th style="min-width:240px">Main reason</th>
+                <th style="text-align:right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in tab.rows %}
+                {% set rec = row.rec %}
+                <tr class="table__row-open" data-open-panel="rec-{{ rec.id }}">
+                  <td class="rank">{{ '%02d' | format(loop.index) }}</td>
+                  <td><div class="site">{{ favicon(rec.website_name) }}<div><div class="site__name">{{ rec.website_name }}</div><div class="site__domain">{{ rec.handle or rec.domain }}</div></div></div></td>
+                  <td>{{ rec.category or '—' }}</td>
+                  <td>{{ score_meter(rec.final_score) }}</td>
+                  <td>{{ sig_breadth(rec.query_count) }}</td>
+                  <td>{{ sig_agreement(rec.model_count) }}</td>
+                  <td>{{ breadth_badge(rec.agreement) }}</td>
+                  <td class="reason">{{ rec.combined_reason or '—' }}</td>
+                  <td style="text-align:right"><button type="button" class="btn btn--secondary btn--sm" data-open-panel="rec-{{ rec.id }}">Details<svg class="btn__ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="width:13px;height:13px"><path d="M6 4l4 4-4 4"/></svg></button></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endfor %}
+  </div>
 </div>
+
+{# Per-type active/visible rules, generated so no JS is needed for the tabs. #}
+<style>
+  .ptabs__radio { position: absolute; opacity: 0; pointer-events: none; }
+  .ptabs__nav { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border, #e5e7eb); margin-bottom: var(--sp-4); }
+  .ptabs__tab { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; cursor: pointer; font-weight: 600; font-size: var(--fs-sm); color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; user-select: none; }
+  .ptabs__tab:hover { color: var(--text-1); }
+  .ptabs__count { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--surface-2, rgba(127,127,127,.14)); color: var(--text-2); }
+  .ptabs__panel { display: none; }
+  {% for tab in tabs %}
+  #ptab-{{ tab.type }}:checked ~ .ptabs__nav label[for="ptab-{{ tab.type }}"] { color: var(--text-1); border-bottom-color: var(--accent, #4f46e5); }
+  #ptab-{{ tab.type }}:checked ~ .ptabs__nav label[for="ptab-{{ tab.type }}"] .ptabs__count { background: var(--accent, #4f46e5); color: #fff; }
+  #ptab-{{ tab.type }}:checked ~ .ptabs__panels #ptab-panel-{{ tab.type }} { display: block; }
+  {% endfor %}
+</style>
 
 <div class="disclaimer" style="max-width:80ch;margin-top:var(--sp-4)">
   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5M8 11h.01"/></svg>
   <span>AdScope predicts where AI assistants are likely to send your audience, based on model responses at analysis time. Results are directional guidance for media planning — not a guarantee of citation, traffic, or placement availability. Validate against your own media data before committing spend.</span>
 </div>
 
+{# Drill-down side panels for every row, regardless of active tab (IDs are unique). #}
 {% for row in rows %}
   {% set rec = row.rec %}
   <div class="scrim" id="rec-{{ rec.id }}" data-open="false">
@@ -94,7 +132,7 @@
           <span class="site__favicon" style="width:38px;height:38px;font-size:17px">{{ (rec.website_name or '?')[0] | upper }}</span>
           <div class="panel__head-main">
             <h2 id="rec-{{ rec.id }}-title" style="font-size:var(--fs-h3);font-family:var(--font-sans);font-weight:600;margin-bottom:2px">{{ rec.website_name }}</h2>
-            <div class="site__domain" style="font-size:var(--fs-sm)">{{ rec.domain }}{% if rec.category %} · {{ rec.category }}{% endif %}</div>
+            <div class="site__domain" style="font-size:var(--fs-sm)">{{ rec.handle or rec.domain }}{% if rec.category %} · {{ rec.category }}{% endif %}</div>
           </div>
         </div>
         <button type="button" class="btn btn--ghost btn--icon panel__close" data-close-panel aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
@@ -122,8 +160,11 @@
         {% endfor %}
       </div>
       <div class="panel__foot">
-        <a class="btn btn--secondary flex-1" href="https://{{ rec.domain }}" target="_blank" rel="noopener">Visit {{ rec.domain }} ↗</a>
-        <button type="button" class="btn btn--ghost" data-close-panel>Close</button>
+        {% set link = rec.url or ('https://' + rec.domain) %}
+        {% if rec.url %}
+          <a class="btn btn--secondary flex-1" href="{{ link }}" target="_blank" rel="noopener">Visit {{ rec.website_name }} ↗</a>
+        {% endif %}
+        <button type="button" class="btn btn--ghost{% if rec.url %}{% else %} flex-1{% endif %}" data-close-panel>Close</button>
       </div>
     </aside>
   </div>

@@ -32,6 +32,31 @@ class ProviderStatus:
     FAILED = "failed"
 
 
+class PublisherType:
+    """Kinds of publisher the discovery stage can surface for a campaign."""
+
+    WEBSITE = "website"
+    YOUTUBE = "youtube"
+    APP = "app"  # mobile / desktop applications
+
+
+# Types the pipeline can actually run today (order = default tab order).
+ALL_PUBLISHER_TYPES = (PublisherType.WEBSITE, PublisherType.YOUTUBE, PublisherType.APP)
+DEFAULT_PUBLISHER_TYPES = (PublisherType.WEBSITE,)
+
+PUBLISHER_TYPE_LABELS = {
+    PublisherType.WEBSITE: "Websites",
+    PublisherType.YOUTUBE: "YouTube channels",
+    PublisherType.APP: "Applications",
+}
+# Singular column header for the primary "who" column of each results table.
+PUBLISHER_TYPE_NOUN = {
+    PublisherType.WEBSITE: "Website",
+    PublisherType.YOUTUBE: "Channel",
+    PublisherType.APP: "App",
+}
+
+
 class Campaign(Base):
     __tablename__ = "campaigns"
 
@@ -42,6 +67,8 @@ class Campaign(Base):
     target_country: Mapped[str] = mapped_column(String(100))
     objective: Mapped[str | None] = mapped_column(String(200), nullable=True)
     budget: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Which publisher kinds to discover, comma-joined (e.g. "website,youtube").
+    publisher_types: Mapped[str] = mapped_column(String(100), default=PublisherType.WEBSITE)
     # Per-campaign pipeline overrides; NULL falls back to the Settings defaults.
     queries_per_provider: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_websites_per_query: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -64,6 +91,12 @@ class Campaign(Base):
     recommendations: Mapped[list["FinalRecommendation"]] = relationship(
         back_populates="campaign", cascade="all, delete-orphan"
     )
+
+    @property
+    def publisher_type_list(self) -> list[str]:
+        """Selected publisher types, falling back to websites if unset."""
+        types = [t for t in (self.publisher_types or "").split(",") if t]
+        return types or [PublisherType.WEBSITE]
 
 
 class GeneratedQuery(Base):
@@ -134,8 +167,11 @@ class FinalRecommendation(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     campaign_id: Mapped[int] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"))
-    website_name: Mapped[str] = mapped_column(String(200))
-    domain: Mapped[str] = mapped_column(String(255))
+    publisher_type: Mapped[str] = mapped_column(String(20), default=PublisherType.WEBSITE)
+    website_name: Mapped[str] = mapped_column(String(200))  # display name (channel/app name)
+    domain: Mapped[str] = mapped_column(String(255))  # normalized identity key (also website/YT locator)
+    handle: Mapped[str | None] = mapped_column(String(200), nullable=True)  # YouTube @handle / app platform
+    url: Mapped[str | None] = mapped_column(String(500), nullable=True)  # clickable link (store URL for apps)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     final_score: Mapped[float] = mapped_column(Float)
     query_count: Mapped[int] = mapped_column(Integer, default=0)

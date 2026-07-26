@@ -19,8 +19,8 @@
               <div class="loading-state__ring"></div>
               <div class="loading-state__core"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></div>
             </div>
-            <h2 class="loading-state__title">Discovering websites</h2>
-            <p class="loading-state__text">For each approved query, AdScope is asking the AI models which sites they'd cite — then combining the answers into one ranked list of publishers by breadth and agreement.</p>
+            <h2 class="loading-state__title">Discovering publishers</h2>
+            <p class="loading-state__text">For each approved query, AdScope is asking the AI models where they'd send this audience — then combining the answers into one ranked list per publisher type by breadth and agreement.</p>
             <span class="loading-state__poll"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Auto-refreshing · analysing {{ selected_query_count }} quer{{ 'y' if selected_query_count == 1 else 'ies' }}</span>
           </div>
           <div style="max-width:520px;margin:0 auto"><div class="progress progress--indeterminate"><div class="progress__bar"></div></div></div>
@@ -96,7 +96,7 @@
           {% if campaign.objective %}<dt>Objective</dt><dd class="def-list__text">{{ campaign.objective }}</dd>{% endif %}
           {% if campaign.budget %}<dt>Budget</dt><dd class="def-list__text">{{ campaign.budget }}</dd>{% endif %}
           <dt>Queries analysed</dt><dd>{{ selected_query_count }}</dd>
-          <dt>Unique websites</dt><dd>{{ unique_websites }}</dd>
+          <dt>Publishers</dt><dd>{{ unique_publishers }}</dd>
           <dt>Analysis date</dt><dd class="def-list__text">{{ (campaign.completed_at or campaign.created_at).strftime('%d %b %Y') }}</dd>
         </dl>
         <hr class="divider-h">

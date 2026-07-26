@@ -49,6 +49,26 @@
       <div class="field" style="max-width:320px"><label class="field__label" for="budget">Budget <span class="field__opt">(optional)</span></label>
         <input class="input" id="budget" name="budget" maxlength="100" placeholder="e.g. ₹ 45,00,000" value="{{ form.get('budget', '') }}"></div>
 
+      {% set selected_types = form.get('publisher_types') or ['website'] %}
+      <div class="field">
+        <span class="field__label">Publisher types</span>
+        <span class="field__hint mb-3">Choose which kinds of publisher to discover. At least one is required.</span>
+        <div class="checkgroup">
+          <label class="checkopt">
+            <input type="checkbox" class="checkbox" name="publisher_types" value="website"{% if 'website' in selected_types %} checked{% endif %}>
+            <span class="checkopt__body"><span class="checkopt__title">Websites</span><span class="checkopt__desc">Digital publishers &amp; sites AI assistants would cite</span></span>
+          </label>
+          <label class="checkopt">
+            <input type="checkbox" class="checkbox" name="publisher_types" value="youtube"{% if 'youtube' in selected_types %} checked{% endif %}>
+            <span class="checkopt__body"><span class="checkopt__title">YouTube channels</span><span class="checkopt__desc">Channels this audience is likely to watch</span></span>
+          </label>
+          <label class="checkopt">
+            <input type="checkbox" class="checkbox" name="publisher_types" value="app"{% if 'app' in selected_types %} checked{% endif %}>
+            <span class="checkopt__body"><span class="checkopt__title">Applications</span><span class="checkopt__desc">Mobile &amp; desktop apps this audience uses</span></span>
+          </label>
+        </div>
+      </div>
+
       <details class="collapse mb-5"{% if form.get('queries_per_provider') or form.get('max_websites_per_query') or form.get('max_final_websites') %} open{% endif %}>
         <summary class="collapse__trigger">
           <svg class="collapse__chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 2l4 4-4 4"/></svg>
