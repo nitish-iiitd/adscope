@@ -2,8 +2,13 @@ import pytest
 
 from app.config import Settings
 from app.entities.models import Campaign, GeneratedQuery
+from app.services.progress import ProgressUpdate
 from app.services.query_service import _parse_queries, generate_queries
-from app.services.site_discovery_service import _parse_sites, discover_sites
+from app.services.site_discovery_service import (
+    _parse_sites,
+    discover_sites,
+    resolve_per_query_limits,
+)
 
 
 def _campaign() -> Campaign:
@@ -118,3 +123,107 @@ async def test_discover_sites_supports_multiple_publisher_types():
     assert all(e.url.startswith("http") for e in apps)
     # Nykaa appears in every demo provider set, so it should surface.
     assert any(e.domain == "nykaa" for e in apps)
+
+
+# --- Per-type "results per query" limits -------------------------------------
+
+
+class TestPerQueryLimits:
+    def test_defaults_apply_when_a_campaign_overrides_nothing(self):
+        settings = Settings(
+            max_websites_per_query=10, max_youtube_per_query=8, max_apps_per_query=6
+        )
+        assert resolve_per_query_limits(settings) == {"website": 10, "youtube": 8, "app": 6}
+
+    def test_campaign_overrides_win_per_type(self):
+        settings = Settings(
+            max_websites_per_query=10, max_youtube_per_query=8, max_apps_per_query=6
+        )
+        limits = resolve_per_query_limits(settings, {"website": 3, "youtube": None, "app": None})
+        assert limits == {"website": 3, "youtube": 8, "app": 6}
+
+
+@pytest.mark.anyio
+async def test_discovery_respects_a_different_limit_per_type():
+    settings = Settings(demo_mode=True)
+    queries = [GeneratedQuery(id=1, text="best organic skincare in India?")]
+
+    output = await discover_sites(
+        queries,
+        settings,
+        publisher_types=["website", "youtube"],
+        max_per_query={"website": 2, "youtube": 4},
+    )
+
+    by_type: dict[str, list[int]] = {}
+    for record in output.query_results:
+        by_type.setdefault(record.publisher_type, []).append(len(record.recommendations))
+
+    assert by_type["website"] and max(by_type["website"]) <= 2
+    assert by_type["youtube"] and max(by_type["youtube"]) > 2  # a different cap really applied
+
+
+# --- Competitor exclusion ----------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_discovery_removes_named_competitors():
+    settings = Settings(demo_mode=True)
+    queries = [GeneratedQuery(id=1, text="best organic skincare in India?")]
+
+    output = await discover_sites(
+        queries,
+        settings,
+        publisher_types=["website", "app"],
+        client_name="Verdant Skincare",
+        competitors=["Nykaa"],
+        exclude_competitors=True,
+    )
+
+    # Nykaa is in every demo provider's website and app set, so it would
+    # otherwise rank near the top of both.
+    assert output.competitors_removed > 0
+    assert not any("nykaa" in e.domain.lower() for e in output.final_by_type["website"])
+    assert not any("nykaa" in e.website_name.lower() for e in output.final_by_type["app"])
+    # Everything else survives.
+    assert any(e.domain == "vogue.in" for e in output.final_by_type["website"])
+
+
+@pytest.mark.anyio
+async def test_competitors_are_kept_when_the_option_is_off():
+    settings = Settings(demo_mode=True)
+    queries = [GeneratedQuery(id=1, text="best organic skincare in India?")]
+
+    output = await discover_sites(
+        queries, settings, competitors=["Nykaa"], exclude_competitors=False
+    )
+
+    assert output.competitors_removed == 0
+    assert any(e.domain == "nykaa.com" for e in output.final_by_type["website"])
+
+
+# --- Progress reporting ------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_query_generation_reports_progress():
+    updates: list[ProgressUpdate] = []
+    await generate_queries(_campaign(), Settings(demo_mode=True), progress=updates.append)
+
+    assert updates
+    assert all(u.current <= u.total for u in updates)
+    # Steps only move forward, and the stage finishes complete.
+    assert [u.step for u in updates] == sorted(u.step for u in updates)
+    assert updates[-1].current == updates[-1].total
+    assert "questions drafted" in updates[-1].message
+
+
+@pytest.mark.anyio
+async def test_discovery_progress_counts_every_model_call():
+    updates: list[ProgressUpdate] = []
+    queries = [GeneratedQuery(id=1, text="best organic skincare in India?")]
+    output = await discover_sites(queries, Settings(demo_mode=True), progress=updates.append)
+
+    call_updates = [u for u in updates if "model answers received" in u.message]
+    assert len(call_updates) == output.total_calls
+    assert updates[-1].current == updates[-1].total

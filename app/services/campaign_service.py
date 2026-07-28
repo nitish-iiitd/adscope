@@ -11,13 +11,16 @@ import csv
 import io
 import logging
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.database import SessionLocal
-from app.entities.models import CampaignPhase, CampaignStatus
+from app.entities.models import PER_TYPE_LIMIT_FIELDS, Campaign, CampaignPhase, CampaignStatus
 from app.repositories import campaign_repository as repo
+from app.services.competitor_service import parse_competitors
 from app.services.llm_service import NoProvidersConfiguredError
+from app.services.progress import ProgressFn, ProgressUpdate
 from app.services.query_service import generate_queries
 from app.services.site_discovery_service import discover_sites
 
@@ -26,6 +29,27 @@ logger = logging.getLogger(__name__)
 NO_PROVIDERS_MESSAGE = (
     "No AI providers are configured. Add a provider API key or enable demo mode."
 )
+
+
+def _progress_writer(db: Session, campaign_id: int) -> ProgressFn:
+    """A progress sink that stores updates on the campaign row.
+
+    Progress is cosmetic: a failed write must never take the pipeline down with
+    it, so errors are logged and swallowed.
+    """
+
+    def write(update: ProgressUpdate) -> None:
+        try:
+            repo.set_progress(db, campaign_id, update)
+        except SQLAlchemyError:
+            logger.warning("Could not record progress for campaign %s", campaign_id, exc_info=True)
+
+    return write
+
+
+def _per_query_overrides(campaign: Campaign) -> dict[str, int | None]:
+    """The campaign's per-type 'results per query' overrides (None = default)."""
+    return {ptype: getattr(campaign, field) for ptype, field in PER_TYPE_LIMIT_FIELDS.items()}
 
 
 def resolve_status(successful: int, failed: int) -> str:
@@ -43,8 +67,11 @@ async def run_query_generation(campaign_id: int, settings: Settings) -> None:
         campaign = repo.get_campaign(db, campaign_id)
         if campaign is None:
             return
+        repo.reset_progress(db, campaign_id, "Reading your brief…")
         try:
-            output = await generate_queries(campaign, settings)
+            output = await generate_queries(
+                campaign, settings, progress=_progress_writer(db, campaign_id)
+            )
         except NoProvidersConfiguredError:
             repo.set_phase(
                 db,
@@ -96,13 +123,22 @@ async def run_site_discovery(campaign_id: int, settings: Settings) -> None:
             )
             return
 
+        repo.reset_progress(
+            db,
+            campaign_id,
+            f"{len(queries)} approved quer{'y' if len(queries) == 1 else 'ies'} queued…",
+        )
         try:
             output = await discover_sites(
                 queries,
                 settings,
                 publisher_types=campaign.publisher_type_list,
-                max_websites=campaign.max_websites_per_query,
+                max_per_query=_per_query_overrides(campaign),
                 max_final=campaign.max_final_websites,
+                client_name=campaign.client_name,
+                competitors=parse_competitors(campaign.competitors),
+                exclude_competitors=bool(campaign.exclude_competitors),
+                progress=_progress_writer(db, campaign_id),
             )
         except NoProvidersConfiguredError:
             repo.set_phase(
@@ -142,11 +178,13 @@ async def run_site_discovery(campaign_id: int, settings: Settings) -> None:
             mark_completed=True,
         )
         logger.info(
-            "Campaign %s completed: %d publishers from %d/%d successful calls",
+            "Campaign %s completed: %d publishers from %d/%d successful calls "
+            "(%d competitor entries removed)",
             campaign_id,
             total_entries,
             output.successful_calls,
             output.total_calls,
+            output.competitors_removed,
         )
     except Exception:
         logger.exception("Site discovery failed for campaign %s", campaign_id)

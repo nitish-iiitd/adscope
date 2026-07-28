@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from typing import TypeVar
 
 from app.config import Settings
@@ -53,16 +53,26 @@ def require_providers(settings: Settings) -> list[BaseProvider]:
     return providers
 
 
-async def gather_bounded(coros: Iterable[Awaitable[T]], limit: int) -> list[T]:
+async def gather_bounded(
+    coros: Iterable[Awaitable[T]],
+    limit: int,
+    on_done: Callable[[], None] | None = None,
+) -> list[T]:
     """Run awaitables concurrently, but never more than ``limit`` at once.
 
     Service-2 fans out to (queries x providers) calls, so an unbounded gather
     would hammer provider rate limits. Order of results matches input order.
+
+    ``on_done`` fires as each awaitable finishes (in completion order, not input
+    order) so callers can report progress while the batch is still running.
     """
     semaphore = asyncio.Semaphore(max(1, limit))
 
     async def _run(coro: Awaitable[T]) -> T:
         async with semaphore:
-            return await coro
+            result = await coro
+        if on_done is not None:
+            on_done()
+        return result
 
     return list(await asyncio.gather(*(_run(c) for c in coros)))

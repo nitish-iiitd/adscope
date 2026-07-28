@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import auth, campaigns, recommendations
+from app.routers import auth, campaigns, guide, recommendations
 from app.security import get_session_user
 from app.templating import templates
 
@@ -55,6 +55,7 @@ async def health():
 
 app.include_router(auth.router)
 app.include_router(campaigns.router)
+app.include_router(guide.router)
 app.include_router(recommendations.router)
 
 

@@ -7,6 +7,7 @@ from app.entities.models import (
 )
 
 MAX_BRIEFING_LENGTH = 5000
+MAX_COMPETITORS_LENGTH = 1000
 
 
 class CampaignCreate(BaseModel):
@@ -21,9 +22,16 @@ class CampaignCreate(BaseModel):
 
     publisher_types: list[str] = Field(default_factory=lambda: list(DEFAULT_PUBLISHER_TYPES))
 
+    # Competitor-owned publishers cannot carry this client's ads, so they can be
+    # kept out of the final list entirely.
+    exclude_competitors: bool = False
+    competitors: str | None = Field(default=None, max_length=MAX_COMPETITORS_LENGTH)
+
     # Optional per-campaign pipeline overrides; None uses the configured defaults.
     queries_per_provider: int | None = Field(default=None, ge=1, le=20)
     max_websites_per_query: int | None = Field(default=None, ge=1, le=25)
+    max_youtube_per_query: int | None = Field(default=None, ge=1, le=25)
+    max_apps_per_query: int | None = Field(default=None, ge=1, le=25)
     max_final_websites: int | None = Field(default=None, ge=1, le=200)
 
     @field_validator("client_name", "campaign_name", "briefing", "target_country")
@@ -52,7 +60,7 @@ class CampaignCreate(BaseModel):
                 out.append(key)
         return out or list(DEFAULT_PUBLISHER_TYPES)
 
-    @field_validator("objective", "budget")
+    @field_validator("objective", "budget", "competitors")
     @classmethod
     def empty_to_none(cls, v: str | None) -> str | None:
         if v is None:
@@ -60,8 +68,21 @@ class CampaignCreate(BaseModel):
         v = v.strip()
         return v or None
 
+    @field_validator("exclude_competitors", mode="before")
+    @classmethod
+    def coerce_checkbox(cls, v: object) -> object:
+        # An unchecked box is absent from the form and arrives as "".
+        if isinstance(v, str) and not v.strip():
+            return False
+        return v
+
     @field_validator(
-        "queries_per_provider", "max_websites_per_query", "max_final_websites", mode="before"
+        "queries_per_provider",
+        "max_websites_per_query",
+        "max_youtube_per_query",
+        "max_apps_per_query",
+        "max_final_websites",
+        mode="before",
     )
     @classmethod
     def blank_int_to_none(cls, v: object) -> object:

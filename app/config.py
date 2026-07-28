@@ -42,9 +42,16 @@ class Settings(BaseSettings):
 
     # --- Pipeline tunables (no magic numbers in code) ---
     queries_per_provider: int = 10
+    # How many results each model may return per query, per publisher type.
+    # Attribute names must match PER_TYPE_LIMIT_FIELDS in entities.models.
     max_websites_per_query: int = 10
+    max_youtube_per_query: int = 10
+    max_apps_per_query: int = 10
     max_final_websites: int = 50
     llm_concurrency: int = 8
+
+    # How often the polling pages (query generation / discovery) auto-refresh.
+    poll_interval_seconds: int = 10
 
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash"

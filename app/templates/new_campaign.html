@@ -69,7 +69,25 @@
         </div>
       </div>
 
-      <details class="collapse mb-5"{% if form.get('queries_per_provider') or form.get('max_websites_per_query') or form.get('max_final_websites') %} open{% endif %}>
+      <div class="field">
+        <span class="field__label">Competitors</span>
+        <span class="field__hint mb-3">A competitor won't sell ad space to this client, so their own sites, channels and apps are dead weight in the final list.</span>
+        <label class="checkopt" style="max-width:520px">
+          <input type="checkbox" class="checkbox" id="exclude_competitors" name="exclude_competitors" value="1"{% if form.get('exclude_competitors') %} checked{% endif %}>
+          <span class="checkopt__body">
+            <span class="checkopt__title">Leave competitor-owned publishers out of the results</span>
+            <span class="checkopt__desc">The models are told to skip them, and anything that slips through is filtered out afterwards.</span>
+          </span>
+        </label>
+        <div class="field mt-4" style="max-width:520px">
+          <label class="field__label" for="competitors">Competitor brands <span class="field__opt">(optional)</span></label>
+          <textarea class="textarea" id="competitors" name="competitors" maxlength="1000" rows="2" style="min-height:66px"
+            placeholder="e.g. Forest Essentials, Kama Ayurveda, Biotique">{{ form.get('competitors', '') }}</textarea>
+          <span class="field__hint">One per line or comma-separated. Naming them makes the filter far more accurate; leaving it blank still asks the models to avoid rival brands' own properties.</span>
+        </div>
+      </div>
+
+      <details class="collapse mb-5"{% if form.get('queries_per_provider') or form.get('max_websites_per_query') or form.get('max_youtube_per_query') or form.get('max_apps_per_query') or form.get('max_final_websites') %} open{% endif %}>
         <summary class="collapse__trigger">
           <svg class="collapse__chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 2l4 4-4 4"/></svg>
           Advanced: pipeline sizes <span class="field__opt" style="margin-left:auto;font-weight:400">optional</span>
@@ -79,11 +97,19 @@
           <div class="field-row">
             <div class="field"><label class="field__label" for="queries_per_provider">Queries per model</label>
               <input class="input input--num" id="queries_per_provider" name="queries_per_provider" type="number" min="1" max="20" placeholder="{{ defaults.queries_per_provider }}" value="{{ form.get('queries_per_provider', '') }}"></div>
-            <div class="field"><label class="field__label" for="max_websites_per_query">Websites per query</label>
-              <input class="input input--num" id="max_websites_per_query" name="max_websites_per_query" type="number" min="1" max="25" placeholder="{{ defaults.max_websites_per_query }}" value="{{ form.get('max_websites_per_query', '') }}"></div>
             <div class="field"><label class="field__label" for="max_final_websites">Final list size</label>
               <input class="input input--num" id="max_final_websites" name="max_final_websites" type="number" min="1" max="200" placeholder="{{ defaults.max_final_websites }}" value="{{ form.get('max_final_websites', '') }}"></div>
           </div>
+          <p class="field__hint mb-4 mt-4">How many results each model may return per query — set separately for each publisher type. Only the types you ticked above are used.</p>
+          <div class="field-row">
+            <div class="field"><label class="field__label" for="max_websites_per_query">Websites per query</label>
+              <input class="input input--num" id="max_websites_per_query" name="max_websites_per_query" type="number" min="1" max="25" placeholder="{{ defaults.max_websites_per_query }}" value="{{ form.get('max_websites_per_query', '') }}"></div>
+            <div class="field"><label class="field__label" for="max_youtube_per_query">YouTube channels per query</label>
+              <input class="input input--num" id="max_youtube_per_query" name="max_youtube_per_query" type="number" min="1" max="25" placeholder="{{ defaults.max_youtube_per_query }}" value="{{ form.get('max_youtube_per_query', '') }}"></div>
+            <div class="field"><label class="field__label" for="max_apps_per_query">Apps per query</label>
+              <input class="input input--num" id="max_apps_per_query" name="max_apps_per_query" type="number" min="1" max="25" placeholder="{{ defaults.max_apps_per_query }}" value="{{ form.get('max_apps_per_query', '') }}"></div>
+          </div>
+          <p class="field__hint">Final list size applies to each publisher type separately.</p>
         </div>
       </details>
 

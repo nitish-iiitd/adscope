@@ -11,6 +11,11 @@ AGREEMENT_MEDIUM = "Medium"
 AGREEMENT_LOW = "Low"
 AGREEMENT_SINGLE = "Single model"
 
+# Share of the approved queries a publisher must appear in to earn each breadth
+# badge. Named so the How it works page can quote the real thresholds.
+BREADTH_HIGH_RATIO = 0.66
+BREADTH_MEDIUM_RATIO = 0.33
+
 
 def normalize_domain(domain: str) -> str:
     """Reduce a domain to a comparable key: no scheme, no www., no path, lowercase."""
@@ -201,9 +206,9 @@ def _breadth_agreement(query_count: int, total_queries: int) -> str:
     if total_queries <= 1 or query_count <= 1:
         return AGREEMENT_SINGLE
     ratio = query_count / total_queries
-    if ratio >= 0.66:
+    if ratio >= BREADTH_HIGH_RATIO:
         return AGREEMENT_HIGH
-    if ratio >= 0.33:
+    if ratio >= BREADTH_MEDIUM_RATIO:
         return AGREEMENT_MEDIUM
     return AGREEMENT_LOW
 

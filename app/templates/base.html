@@ -24,6 +24,7 @@
       <nav class="navbar__nav">
         <a class="navbar__link" href="/"{% if request.url.path == '/' %} aria-current="page"{% endif %}>Campaigns</a>
         <a class="navbar__link" href="/campaigns/new"{% if request.url.path.startswith('/campaigns/new') %} aria-current="page"{% endif %}>New campaign</a>
+        <a class="navbar__link" href="/how-it-works"{% if request.url.path == '/how-it-works' %} aria-current="page"{% endif %}>How it works</a>
       </nav>
       <span class="navbar__spacer"></span>
       {% if demo_mode %}<span class="navbar__demo">Demo mode</span>{% endif %}

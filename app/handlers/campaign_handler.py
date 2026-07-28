@@ -27,9 +27,12 @@ FIELD_LABELS = {
     "target_country": "Target country",
     "objective": "Campaign objective",
     "budget": "Budget",
+    "competitors": "Competitor brands",
     "queries_per_provider": "Queries per model",
     "max_websites_per_query": "Websites per query",
-    "max_final_websites": "Final website list size",
+    "max_youtube_per_query": "YouTube channels per query",
+    "max_apps_per_query": "Apps per query",
+    "max_final_websites": "Final list size",
 }
 
 

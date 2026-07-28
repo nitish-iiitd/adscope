@@ -56,6 +56,15 @@ PUBLISHER_TYPE_NOUN = {
     PublisherType.APP: "App",
 }
 
+# How many results each model may return per query, per type. The same attribute
+# name exists on both Settings (the global default) and Campaign (the optional
+# per-campaign override), so one mapping resolves both.
+PER_TYPE_LIMIT_FIELDS = {
+    PublisherType.WEBSITE: "max_websites_per_query",
+    PublisherType.YOUTUBE: "max_youtube_per_query",
+    PublisherType.APP: "max_apps_per_query",
+}
+
 
 class Campaign(Base):
     __tablename__ = "campaigns"
@@ -69,12 +78,24 @@ class Campaign(Base):
     budget: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Which publisher kinds to discover, comma-joined (e.g. "website,youtube").
     publisher_types: Mapped[str] = mapped_column(String(100), default=PublisherType.WEBSITE)
+    # Competitor handling: brands whose own properties cannot carry this client's
+    # ads, so they are worthless in the output list.
+    exclude_competitors: Mapped[bool] = mapped_column(Boolean, default=False)
+    competitors: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Per-campaign pipeline overrides; NULL falls back to the Settings defaults.
     queries_per_provider: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_websites_per_query: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_youtube_per_query: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_apps_per_query: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_final_websites: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default=CampaignStatus.PROCESSING)
     phase: Mapped[str] = mapped_column(String(30), default=CampaignPhase.GENERATING_QUERIES)
+    # Live progress of whichever background stage is running, so the polling
+    # pages can show a real bar instead of a spinner (see services/progress.py).
+    progress_step: Mapped[int] = mapped_column(Integer, default=1)
+    progress_current: Mapped[int] = mapped_column(Integer, default=0)
+    progress_total: Mapped[int] = mapped_column(Integer, default=0)
+    progress_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -114,9 +114,39 @@ DISCOVERY_PROMPTS = {
 }
 
 
-def discovery_system_prompt(publisher_type: str, max_per_query: int) -> str:
+# --- Competitor exclusion ----------------------------------------------------
+#
+# Appended to the discovery prompt (never formatted with it, so the JSON braces
+# in the templates above stay untouched). The multi-brand carve-out matters: a
+# retailer or magazine that covers many brands is a *place to advertise*, not a
+# competitor, and dropping those would gut the list.
+
+COMPETITOR_CLAUSE = """
+
+Important exclusion rule: this list is used to buy advertising for {client}. A \
+property owned or operated by a competing brand will never carry {client}'s \
+advertising, so it is useless here.
+
+Exclude any publisher that is the owned property (site, channel, app or store) \
+of a brand competing with {client}.{named} Retailers, marketplaces, magazines \
+and creators that cover many brands are NOT competitors - keep those."""
+
+NAMED_COMPETITORS_CLAUSE = """ In particular, exclude these brands and anything \
+they own: {names}."""
+
+
+def competitor_exclusion_clause(client_name: str, competitors: list[str]) -> str:
+    """The exclusion instruction appended to every discovery prompt, or ""."""
+    client = (client_name or "the advertiser").strip() or "the advertiser"
+    named = NAMED_COMPETITORS_CLAUSE.format(names=", ".join(competitors)) if competitors else ""
+    return COMPETITOR_CLAUSE.format(client=client, named=named)
+
+
+def discovery_system_prompt(
+    publisher_type: str, max_per_query: int, exclusion_clause: str = ""
+) -> str:
     template = DISCOVERY_PROMPTS.get(publisher_type, WEBSITE_SYSTEM_PROMPT)
-    return template.format(max=max_per_query)
+    return template.format(max=max_per_query) + exclusion_clause
 
 
 def build_site_user_prompt(query_text: str) -> str:

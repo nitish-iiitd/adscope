@@ -20,6 +20,35 @@
 <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.5l2.5 2.5 4.5-5"/></svg>
 {%- endmacro %}
 
+{# Determinate progress bar + the running checklist, for the two waiting pages.
+   `progress` comes from services.progress.build_view. #}
+{% macro progress_panel(progress) -%}
+<div class="prog">
+  <div class="prog__head">
+    <span class="prog__msg">{{ progress.message }}</span>
+    <span class="prog__pct">{{ progress.percent }}%</span>
+  </div>
+  <div class="progress" role="progressbar" aria-valuenow="{{ progress.percent }}" aria-valuemin="0" aria-valuemax="100">
+    <div class="progress__bar" style="width:{{ progress.percent }}%"></div>
+  </div>
+  <ol class="prog__steps">
+    {% for step in progress.steps %}
+      <li class="prog__step prog__step--{{ step.state }}">
+        <span class="prog__mark">
+          {%- if step.state == 'done' -%}{{ _check() }}
+          {%- elif step.state == 'active' -%}<span class="prog__pulse"></span>
+          {%- else -%}<span class="prog__dot"></span>{%- endif -%}
+        </span>
+        <div>
+          <div class="prog__title">{{ step.title }}</div>
+          <div class="prog__detail">{{ step.detail }}</div>
+        </div>
+      </li>
+    {% endfor %}
+  </ol>
+</div>
+{%- endmacro %}
+
 {# stage: 1..5 current step. working: show "Working…" on the active step. #}
 {% macro stepper(stage, working=false, active_label='Now') -%}
 {% set steps = [('Brief','You'), ('Draft queries','AI'), ('Review','You'), ('Discover','AI'), ('Publishers','Result')] %}

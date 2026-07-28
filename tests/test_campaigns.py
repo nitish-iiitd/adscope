@@ -248,3 +248,123 @@ class TestStatusResolution:
 
     def test_all_fail(self):
         assert resolve_status(successful=0, failed=3) == CampaignStatus.FAILED
+
+
+# --- Competitor exclusion & per-type limits from the form --------------------
+
+
+def test_form_stores_competitor_choice_and_per_type_limits(auth_client, db):
+    _create_campaign(
+        auth_client,
+        exclude_competitors="1",
+        competitors="Nykaa, Purplle",
+        max_websites_per_query="4",
+        max_youtube_per_query="6",
+        max_apps_per_query="2",
+    )
+
+    campaign = db.query(Campaign).one()
+    assert campaign.exclude_competitors is True
+    assert campaign.competitors == "Nykaa, Purplle"
+    assert (campaign.max_websites_per_query, campaign.max_youtube_per_query) == (4, 6)
+    assert campaign.max_apps_per_query == 2
+
+
+def test_competitor_exclusion_defaults_to_off(auth_client, db):
+    _create_campaign(auth_client)
+
+    campaign = db.query(Campaign).one()
+    assert campaign.exclude_competitors is False
+    assert campaign.competitors is None
+
+
+def test_named_competitors_are_absent_from_the_results(auth_client, db):
+    campaign_id = _run_pipeline(
+        auth_client,
+        db,
+        publisher_types=["website"],
+        exclude_competitors="1",
+        competitors="Nykaa",
+    )
+
+    campaign = db.query(Campaign).filter_by(id=campaign_id).one()
+    domains = [r.domain for r in campaign.recommendations]
+    assert domains  # the run still produced a list
+    assert not any("nykaa" in d for d in domains)
+    assert "vogue.in" in domains
+
+    page = auth_client.get(f"/campaigns/{campaign_id}")
+    assert "Excluded from results" in page.text
+
+
+# --- Progress ----------------------------------------------------------------
+
+
+def test_progress_is_recorded_through_both_stages(auth_client, db):
+    campaign_id = int(_create_campaign(auth_client).headers["location"].split("/")[2])
+
+    campaign = db.query(Campaign).filter_by(id=campaign_id).one()
+    assert campaign.progress_total > 0
+    assert campaign.progress_current == campaign.progress_total
+    assert "questions drafted" in campaign.progress_message
+
+    form = _review_form(db, campaign_id, select=2)
+    auth_client.post(f"/campaigns/{campaign_id}/queries", data=form, follow_redirects=False)
+
+    db.expire_all()
+    campaign = db.query(Campaign).filter_by(id=campaign_id).one()
+    # 2 queries x 3 demo providers x 1 type, plus the ranking step.
+    assert campaign.progress_total == 2 * 3 + 1
+    assert "publishers ranked" in campaign.progress_message
+
+
+def _waiting_campaign(db, phase, **progress):
+    """A campaign parked mid-stage, so the polling templates can be rendered."""
+    campaign = Campaign(
+        client_name="Verdant Skincare",
+        campaign_name="Monsoon Awareness",
+        briefing=VALID_FORM["briefing"],
+        target_country="India",
+        phase=phase,
+        status=CampaignStatus.PROCESSING,
+        **progress,
+    )
+    db.add(campaign)
+    db.commit()
+    return campaign.id
+
+
+def test_query_generation_page_shows_the_progress_panel(auth_client, db):
+    campaign_id = _waiting_campaign(
+        db,
+        CampaignPhase.GENERATING_QUERIES,
+        progress_step=2,
+        progress_current=1,
+        progress_total=4,
+        progress_message="1 of 3 models have answered",
+    )
+    response = auth_client.get(f"/campaigns/{campaign_id}/review")
+
+    assert response.status_code == 200
+    assert "1 of 3 models have answered" in response.text
+    assert "width:25%" in response.text
+    assert "Asking the AI models" in response.text
+    assert 'http-equiv="refresh" content="10"' in response.text
+
+
+def test_discovery_page_shows_the_progress_panel(auth_client, db):
+    campaign_id = _waiting_campaign(
+        db,
+        CampaignPhase.DISCOVERING_SITES,
+        progress_step=2,
+        progress_current=9,
+        progress_total=18,
+        progress_message="9 of 17 model answers received",
+    )
+    response = auth_client.get(f"/campaigns/{campaign_id}")
+
+    assert response.status_code == 200
+    assert "9 of 17 model answers received" in response.text
+    assert "width:50%" in response.text
+    assert "Ranking the final list" in response.text
+    assert 'http-equiv="refresh" content="10"' in response.text

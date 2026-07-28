@@ -17,6 +17,7 @@ from app.handlers.campaign_handler import (
 )
 from app.repositories import campaign_repository as repo
 from app.services.campaign_service import run_query_generation, run_site_discovery
+from app.services.progress import QUERY_STEPS, build_view
 from app.templating import templates
 
 logger = logging.getLogger(__name__)
@@ -53,8 +54,12 @@ async def create_campaign(
     objective: str = Form(""),
     budget: str = Form(""),
     publisher_types: list[str] = Form(default=[]),
+    exclude_competitors: str = Form(""),
+    competitors: str = Form(""),
     queries_per_provider: str = Form(""),
     max_websites_per_query: str = Form(""),
+    max_youtube_per_query: str = Form(""),
+    max_apps_per_query: str = Form(""),
     max_final_websites: str = Form(""),
 ):
     form = {
@@ -65,8 +70,12 @@ async def create_campaign(
         "objective": objective,
         "budget": budget,
         "publisher_types": publisher_types,
+        "exclude_competitors": exclude_competitors,
+        "competitors": competitors,
         "queries_per_provider": queries_per_provider,
         "max_websites_per_query": max_websites_per_query,
+        "max_youtube_per_query": max_youtube_per_query,
+        "max_apps_per_query": max_apps_per_query,
         "max_final_websites": max_final_websites,
     }
     try:
@@ -102,6 +111,7 @@ async def review_queries(request: Request, campaign_id: int, db: Session = Depen
         {
             "campaign": campaign,
             "generating": generating,
+            "progress": build_view(campaign, QUERY_STEPS) if generating else None,
             "queries": repo.get_queries(db, campaign_id),
             "error": None,
         },
@@ -131,6 +141,7 @@ async def submit_queries(
             {
                 "campaign": campaign,
                 "generating": False,
+                "progress": None,
                 "queries": repo.get_queries(db, campaign_id),
                 "error": str(exc),
             },

@@ -163,6 +163,13 @@ OpenRouter is a gateway to many models — put any model slug it supports in `OP
 | `DATABASE_URL`         | `sqlite:///./data/adscope.db`| SQLite database location.                                 |
 | `DEMO_MODE`            | `true`                       | Use mocked providers instead of real APIs.                |
 | `LLM_TIMEOUT_SECONDS`  | `60`                         | Per-provider request timeout.                             |
+| `QUERIES_PER_PROVIDER` | `10`                         | Queries each model drafts in service-1.                   |
+| `MAX_WEBSITES_PER_QUERY` | `10`                       | Max websites a model returns per query.                   |
+| `MAX_YOUTUBE_PER_QUERY`| `10`                         | Max YouTube channels a model returns per query.           |
+| `MAX_APPS_PER_QUERY`   | `10`                         | Max apps a model returns per query.                       |
+| `MAX_FINAL_WEBSITES`   | `50`                         | Cap on the final ranked list, per publisher type.         |
+| `LLM_CONCURRENCY`      | `8`                          | Max concurrent provider calls.                            |
+| `POLL_INTERVAL_SECONDS`| `10`                         | Auto-refresh interval on the two waiting pages.           |
 | `GEMINI_API_KEY`       | empty                        | Enables Gemini when set.                                  |
 | `GEMINI_MODEL`         | `gemini-2.0-flash`           | Gemini model id.                                          |
 | `GROQ_API_KEY`         | empty                        | Enables Groq when set.                                    |
@@ -246,8 +253,11 @@ POST /logout
 GET  /                                dashboard
 GET  /campaigns/new
 POST /campaigns
+GET  /campaigns/{id}/review           human review of the drafted queries
+POST /campaigns/{id}/queries          submit the reviewed queries
 GET  /campaigns/{id}                  results
 GET  /campaigns/{id}/export.csv
+GET  /how-it-works                    plain-English guide to the pipeline
 ```
 
 Everything except `/login` and `/health` requires a session.

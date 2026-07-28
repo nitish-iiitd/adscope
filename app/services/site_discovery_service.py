@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pydantic import ValidationError
 
 from app.config import Settings
-from app.entities.models import GeneratedQuery, PublisherType
+from app.entities.models import PER_TYPE_LIMIT_FIELDS, GeneratedQuery, PublisherType
 from app.providers.base import (
     TASK_DISCOVER_APP,
     TASK_DISCOVER_SITES,
@@ -21,13 +21,26 @@ from app.providers.base import (
     extract_json,
 )
 from app.schemas.campaign import ProviderCallResult, ProviderOutcome, Recommendation
+from app.services.competitor_service import filter_competitors
 from app.services.consensus_service import (
     ConsensusEntry,
     aggregate_across_queries,
     build_consensus,
 )
 from app.services.llm_service import gather_bounded, require_providers
-from app.services.prompts import build_site_user_prompt, discovery_system_prompt
+from app.services.progress import (
+    STEP_CALLING_MODELS,
+    STEP_MERGING,
+    STEP_RANKING,
+    ProgressFn,
+    ProgressUpdate,
+    noop_progress,
+)
+from app.services.prompts import (
+    build_site_user_prompt,
+    competitor_exclusion_clause,
+    discovery_system_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +72,22 @@ class DiscoveryOutput:
     final_by_type: dict[str, list[ConsensusEntry]]
     total_calls: int
     successful_calls: int
+    # How many returned publishers the competitor filter dropped (0 when off).
+    competitors_removed: int = 0
+
+
+def resolve_per_query_limits(
+    settings: Settings, overrides: dict[str, int | None] | None = None
+) -> dict[str, int]:
+    """How many results each model may return per query, for every type.
+
+    A campaign's override wins; ``None`` or 0 falls back to the global default.
+    """
+    overrides = overrides or {}
+    return {
+        ptype: overrides.get(ptype) or getattr(settings, field)
+        for ptype, field in PER_TYPE_LIMIT_FIELDS.items()
+    }
 
 
 def _raw_recommendations(text: str | None, kind: str) -> list[dict]:
@@ -157,13 +186,25 @@ async def discover_sites(
     settings: Settings,
     *,
     publisher_types: list[str] | None = None,
-    max_websites: int | None = None,
+    max_per_query: dict[str, int | None] | None = None,
     max_final: int | None = None,
+    client_name: str = "",
+    competitors: list[str] | None = None,
+    exclude_competitors: bool = False,
+    progress: ProgressFn = noop_progress,
 ) -> DiscoveryOutput:
     # Per-campaign overrides fall back to the configured defaults.
-    max_websites = max_websites or settings.max_websites_per_query
+    limits = resolve_per_query_limits(settings, max_per_query)
     max_final = max_final or settings.max_final_websites
     publisher_types = publisher_types or [PublisherType.WEBSITE]
+
+    competitors = competitors or []
+    # The prompt asks the models to skip competitors; the filter below enforces
+    # it. Naming no competitors still leaves the models the "own-brand" rule.
+    exclusion_clause = (
+        competitor_exclusion_clause(client_name, competitors) if exclude_competitors else ""
+    )
+    filter_names = competitors if exclude_competitors else []
 
     providers = require_providers(settings)
 
@@ -177,16 +218,54 @@ async def discover_sites(
         len(providers),
         len(jobs),
     )
+
+    # One unit per model call, plus one for the merge and ranking that follow.
+    total_units = len(jobs) + 1
+    done = 0
+    progress(
+        ProgressUpdate(
+            STEP_CALLING_MODELS,
+            0,
+            total_units,
+            f"Sending {len(jobs)} AI calls: {len(queries)} quer"
+            f"{'y' if len(queries) == 1 else 'ies'} x {len(providers)} model"
+            f"{'' if len(providers) == 1 else 's'} x {len(publisher_types)} publisher type"
+            f"{'' if len(publisher_types) == 1 else 's'}…",
+        )
+    )
+
+    def _tick() -> None:
+        nonlocal done
+        done += 1
+        progress(
+            ProgressUpdate(
+                STEP_CALLING_MODELS,
+                done,
+                total_units,
+                f"{done} of {len(jobs)} model answers received",
+            )
+        )
+
     results = await gather_bounded(
         (
             p.complete(
-                discovery_system_prompt(t, max_websites),
+                discovery_system_prompt(t, limits[t], exclusion_clause),
                 build_site_user_prompt(q.text),
                 task=DISCOVERY_TASKS.get(t, TASK_DISCOVER_SITES),
             )
             for (t, q, p) in jobs
         ),
         settings.llm_concurrency,
+        on_done=_tick,
+    )
+
+    progress(
+        ProgressUpdate(
+            STEP_MERGING,
+            len(jobs),
+            total_units,
+            "Merging the models' answers for each question…",
+        )
     )
 
     # Regroup flat results by (type, query), preserving order.
@@ -197,6 +276,7 @@ async def discover_sites(
     query_records: list[QueryResultRecord] = []
     final_by_type: dict[str, list[ConsensusEntry]] = {}
     successful_calls = 0
+    competitors_removed = 0
 
     for publisher_type in publisher_types:
         per_query_consensus: list[tuple[str, list[ConsensusEntry]]] = []
@@ -204,10 +284,14 @@ async def discover_sites(
             outcomes: list[ProviderOutcome] = []
             for result in grouped.get((publisher_type, id(query)), []):
                 recs = (
-                    _parse_publishers(result.text, publisher_type, max_websites)
+                    _parse_publishers(result.text, publisher_type, limits[publisher_type])
                     if result.success
                     else []
                 )
+                recs, dropped = filter_competitors(recs, publisher_type, filter_names)
+                competitors_removed += dropped
+                # A call that returned only competitors still answered - it just
+                # has nothing usable left, which is what "success" means here.
                 success = result.success and bool(recs)
                 if success:
                     successful_calls += 1
@@ -233,13 +317,31 @@ async def discover_sites(
                 )
             per_query_consensus.append((query.text, build_consensus(outcomes, publisher_type)))
 
+        progress(
+            ProgressUpdate(
+                STEP_RANKING,
+                len(jobs),
+                total_units,
+                f"Ranking the final {publisher_type} list by breadth and agreement…",
+            )
+        )
         final_by_type[publisher_type] = aggregate_across_queries(
             per_query_consensus, max_final, publisher_type
         )
+
+    total_entries = sum(len(entries) for entries in final_by_type.values())
+    progress(
+        ProgressUpdate(
+            STEP_RANKING, total_units, total_units, f"{total_entries} publishers ranked"
+        )
+    )
+    if competitors_removed:
+        logger.info("service-2: removed %d competitor-owned publishers", competitors_removed)
 
     return DiscoveryOutput(
         query_results=query_records,
         final_by_type=final_by_type,
         total_calls=len(jobs),
         successful_calls=successful_calls,
+        competitors_removed=competitors_removed,
     )

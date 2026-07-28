@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stepper, status_pill %}
+{% from "_macros.html" import stepper, status_pill, progress_panel %}
 {% block title %}{{ campaign.campaign_name }} &middot; {{ app_name }}{% endblock %}
 
 {# Poll only while service-2 is discovering (condition inside the block). #}
-{% block head %}{% if processing %}<meta http-equiv="refresh" content="4">{% endif %}{% endblock %}
+{% block head %}{% if processing %}<meta http-equiv="refresh" content="{{ poll_seconds }}">{% endif %}{% endblock %}
 
 {% block content %}
 <div class="breadcrumb"><a href="/">Campaigns</a><span class="breadcrumb__sep">/</span><span class="breadcrumb__cur">{{ campaign.campaign_name }}</span></div>
@@ -21,9 +21,9 @@
             </div>
             <h2 class="loading-state__title">Discovering publishers</h2>
             <p class="loading-state__text">For each approved query, AdScope is asking the AI models where they'd send this audience — then combining the answers into one ranked list per publisher type by breadth and agreement.</p>
-            <span class="loading-state__poll"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Auto-refreshing · analysing {{ selected_query_count }} quer{{ 'y' if selected_query_count == 1 else 'ies' }}</span>
+            <span class="loading-state__poll"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Auto-refreshing every {{ poll_seconds }}s · analysing {{ selected_query_count }} quer{{ 'y' if selected_query_count == 1 else 'ies' }}</span>
           </div>
-          <div style="max-width:520px;margin:0 auto"><div class="progress progress--indeterminate"><div class="progress__bar"></div></div></div>
+          {{ progress_panel(progress) }}
         </div>
       </div>
     </div>
@@ -95,6 +95,10 @@
           <dt>Target country</dt><dd class="def-list__text">{{ campaign.target_country }}</dd>
           {% if campaign.objective %}<dt>Objective</dt><dd class="def-list__text">{{ campaign.objective }}</dd>{% endif %}
           {% if campaign.budget %}<dt>Budget</dt><dd class="def-list__text">{{ campaign.budget }}</dd>{% endif %}
+          {% if campaign.exclude_competitors %}
+            <dt>Competitors</dt>
+            <dd class="def-list__text">Excluded from results{% if campaign.competitors %} — {{ campaign.competitors }}{% endif %}</dd>
+          {% endif %}
           <dt>Queries analysed</dt><dd>{{ selected_query_count }}</dd>
           <dt>Publishers</dt><dd>{{ unique_publishers }}</dd>
           <dt>Analysis date</dt><dd class="def-list__text">{{ (campaign.completed_at or campaign.created_at).strftime('%d %b %Y') }}</dd>

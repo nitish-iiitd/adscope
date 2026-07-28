@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+{% block title %}How it works &middot; {{ app_name }}{% endblock %}
+
+{# Everything factual on this page (prompts, defaults, thresholds) is rendered
+   from the running code via routers/guide.py, so it cannot drift. #}
+
+{% block content %}
+<div class="guide-hero">
+  <span class="eyebrow">How it works</span>
+  <h1 class="guide-hero__title">Finding where to advertise, by asking the AI assistants your customers ask</h1>
+  <p class="guide-hero__lead">
+    A complete, plain-English walkthrough of what {{ app_name }} does, what it sends to the AI models,
+    how it scores what comes back, and what each choice on the form actually changes.
+    No technical background needed.
+  </p>
+</div>
+
+<div class="guide-layout">
+  <nav class="guide-toc" aria-label="On this page">
+    <div class="guide-toc__inner">
+      <div class="eyebrow mb-3">On this page</div>
+      <ol class="guide-toc__list">
+        <li><a href="#idea">1. The idea in one minute</a></li>
+        <li><a href="#stages">2. The five stages</a></li>
+        <li><a href="#form">3. What each field changes</a></li>
+        <li><a href="#prompts">4. The exact words we send</a></li>
+        <li><a href="#scoring">5. How the scoring works</a></li>
+        <li><a href="#competitors">6. Keeping competitors out</a></li>
+        <li><a href="#types">7. Websites, channels and apps</a></li>
+        <li><a href="#reading">8. Reading the results</a></li>
+        <li><a href="#limits">9. What this is not</a></li>
+        <li><a href="#glossary">10. Glossary</a></li>
+      </ol>
+    </div>
+  </nav>
+
+  <div class="guide">
+
+    <!-- 1 --------------------------------------------------------------- -->
+    <section id="idea">
+      <h2>1. The idea in one minute</h2>
+
+      <p class="guide__lead">
+        {{ app_name }} tells you which websites, YouTube channels and apps your advertising should
+        appear on — by predicting the questions your target audience asks AI assistants, then
+        discovering where those assistants send people who ask them.
+      </p>
+
+      <p>
+        For decades, deciding <em>where</em> to advertise meant a planner's experience, traffic
+        reports and audience panels. That still matters. But a growing share of buying journeys
+        now starts with someone typing a question into ChatGPT or Gemini rather than a search box
+        or a magazine. The assistant answers by leaning on a handful of sources it trusts — and
+        frequently names them.
+      </p>
+
+      <p>That creates a question worth money to an advertiser:</p>
+
+      <blockquote class="guide__quote">
+        When my audience asks an AI assistant about my product category, which publishers does
+        that assistant lean on — and where is that audience's attention actually sitting?
+      </blockquote>
+
+      <p>
+        {{ app_name }} answers it by running the obvious experiment at scale: imagine your
+        customer talking to an assistant, ask real AI models those same questions, and collect
+        where they point. The names that keep coming back — across many customer questions, and
+        across several independent models — are the ones worth buying.
+      </p>
+
+      <div class="alert alert--info">
+        <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 8v4M9 5.5h.01"/></svg>
+        <div class="alert__body">
+          <div class="alert__title">Why several AI models, not one?</div>
+          <div class="alert__text">
+            Any single model can be biased, patchy or simply wrong. {{ app_name }} asks
+            {{ provider_count }} independent models the same thing and looks for
+            <strong>agreement</strong> — the same instinct as asking several experts and trusting
+            what they concur on. One model naming a publisher is a hint; all of them naming it is
+            a signal. Models can be added or swapped without redesigning anything.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 --------------------------------------------------------------- -->
+    <section id="stages">
+      <h2>2. The five stages, end to end</h2>
+
+      <ol class="guide-stages">
+        <li class="guide-stage">
+          <span class="guide-stage__num">1</span>
+          <div>
+            <h3>You describe the campaign <span class="guide-stage__who guide-stage__who--you">You</span></h3>
+            <p>
+              A short form: client, campaign name, target country, objective, optional budget, and
+              a free-text briefing covering product, audience and positioning. You also pick which
+              kinds of publisher to look for, and whether competitors should be excluded.
+            </p>
+          </div>
+        </li>
+        <li class="guide-stage">
+          <span class="guide-stage__num">2</span>
+          <div>
+            <h3>The models draft your audience's questions <span class="guide-stage__who">AI</span></h3>
+            <p>
+              Your brief goes to every model at once with one instruction: <em>imagine the real
+              people in this audience — what would they type into their own AI assistant?</em>
+              Each model returns a set of realistic questions, deliberately varied across research,
+              comparison, how-to, buying and local intent. With {{ provider_count }} models at the
+              default of {{ defaults.queries_per_provider }} each, that is a pool of about
+              {{ provider_count * defaults.queries_per_provider }} drafts.
+            </p>
+          </div>
+        </li>
+        <li class="guide-stage guide-stage--gate">
+          <span class="guide-stage__num">3</span>
+          <div>
+            <h3>You review and refine <span class="guide-stage__who guide-stage__who--you">You</span></h3>
+            <p>
+              {{ app_name }} stops here and waits. Every drafted question appears in an editor
+              where you can reword, delete, deselect or add your own. Nothing proceeds until you
+              submit. This is the deliberate human gate: the AI proposes the questions,
+              <strong>you decide</strong> which ones are worth spending compute on.
+            </p>
+          </div>
+        </li>
+        <li class="guide-stage">
+          <span class="guide-stage__num">4</span>
+          <div>
+            <h3>The models say where they'd send that audience <span class="guide-stage__who">AI</span></h3>
+            <p>
+              Every question you approved goes to every model, once for each publisher type you
+              ticked. Each answer is a scored list with a short reason per entry. This is the long
+              stage — it is one AI call per question × model × type — and the page shows a live
+              progress bar while it runs.
+            </p>
+          </div>
+        </li>
+        <li class="guide-stage">
+          <span class="guide-stage__num">5</span>
+          <div>
+            <h3>Everything merges into one ranked list <span class="guide-stage__who guide-stage__who--out">Result</span></h3>
+            <p>
+              All those lists collapse into a single ranking per publisher type, with the evidence
+              attached to every row: which of your questions surfaced it and which models named it.
+              Export to CSV when you're happy.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 3 --------------------------------------------------------------- -->
+    <section id="form">
+      <h2>3. What each field on the form actually changes</h2>
+
+      <p>
+        Not every field does the same kind of work. Some steer <em>which questions get drafted</em>,
+        others steer <em>which publishers come back</em>, and a couple only change how much the
+        system explores. This is the honest breakdown.
+      </p>
+
+      <div class="table-wrap">
+        <table class="table guide-table">
+          <thead>
+            <tr><th style="min-width:150px">Field</th><th style="min-width:130px">Where it acts</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Client briefing</b></td>
+              <td><span class="tag tag--stage2">Stage 2</span></td>
+              <td>Does most of the work. The models read it to picture your audience, so a brief naming the audience, category, positioning and season produces sharper questions than a vague one.</td>
+            </tr>
+            <tr>
+              <td><b>Client name</b></td>
+              <td><span class="tag tag--stage2">Stage 2</span> <span class="tag tag--stage4">Stage 4</span></td>
+              <td>Part of the brief. The models are told <em>not</em> to mention your brand in the drafted questions — a customer asks about a need, not about you. It is also named in the competitor rule if you switch exclusion on.</td>
+            </tr>
+            <tr>
+              <td><b>Target country</b></td>
+              <td><span class="tag tag--stage2">Stage 2</span></td>
+              <td>Shapes the market the questions are written for, which is what pulls local publishers into the answers downstream.</td>
+            </tr>
+            <tr>
+              <td><b>Objective</b></td>
+              <td><span class="tag tag--stage2">Stage 2</span></td>
+              <td>Tilts the <em>kind</em> of question drafted. An awareness objective pulls the pool toward broad discovery and category questions, which tends to surface large editorial publishers. A consideration or performance objective pulls toward comparison and buying questions, which surfaces review sites, marketplaces and specialists. It does not change any score.</td>
+            </tr>
+            <tr>
+              <td><b>Budget</b></td>
+              <td><span class="tag tag--stage2">Stage 2</span></td>
+              <td>Context only, and the weakest lever here. It sits in the brief and can nudge the models toward premium or mass-market framing. It does <strong>not</strong> filter publishers by cost, and {{ app_name }} never invents rate cards — nothing in the output is priced.</td>
+            </tr>
+            <tr>
+              <td><b>Publisher types</b></td>
+              <td><span class="tag tag--stage4">Stage 4</span></td>
+              <td>Decides which discovery questions get asked, and therefore which result tabs you get. Each type is asked in its own way (see section 7). Every extra type multiplies the number of AI calls.</td>
+            </tr>
+            <tr>
+              <td><b>Exclude competitors</b></td>
+              <td><span class="tag tag--stage4">Stage 4</span></td>
+              <td>Adds a rule to every discovery prompt and filters the results afterwards. See section 6.</td>
+            </tr>
+            <tr>
+              <td><b>Queries per model</b></td>
+              <td><span class="tag tag--stage2">Stage 2</span></td>
+              <td>How many questions each model drafts (default {{ defaults.queries_per_provider }}). Raises the size of the pool you review.</td>
+            </tr>
+            <tr>
+              <td><b>Results per query</b></td>
+              <td><span class="tag tag--stage4">Stage 4</span></td>
+              <td>How many publishers each model may return per question, set separately per type (defaults: {{ defaults.max_websites_per_query }} websites, {{ defaults.max_youtube_per_query }} channels, {{ defaults.max_apps_per_query }} apps). Higher means a longer tail and more thinly-evidenced entries.</td>
+            </tr>
+            <tr>
+              <td><b>Final list size</b></td>
+              <td><span class="tag tag--stage5">Stage 5</span></td>
+              <td>How long the finished ranking may be, per publisher type (default {{ defaults.max_final_websites }}). Purely a trim of the bottom — it changes nothing above the cut.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert--warning">
+        <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2.5L16.5 15.5H1.5L9 2.5Z"/><path d="M9 7.5v3.5M9 13.5h.01"/></svg>
+        <div class="alert__body">
+          <div class="alert__title">Objective and budget influence the questions, not the ranking</div>
+          <div class="alert__text">
+            This is worth being precise about, because it is easy to assume otherwise. Objective and
+            budget are read only when the audience questions are drafted. The discovery stage sees
+            just one approved question at a time — it is never shown the objective or the budget, and
+            no score is weighted by either. Their influence is real but entirely indirect: different
+            questions in, different publishers out. If you want the objective to bite harder, say so
+            in the briefing and keep the questions that match it at the review step.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 --------------------------------------------------------------- -->
+    <section id="prompts">
+      <h2>4. The exact words we send to the AI</h2>
+
+      <p>
+        No black box. These are the live instructions, pulled straight from the running system —
+        if an engineer edits a prompt, this page changes with it. Every model gets a
+        <strong>system prompt</strong> (its standing instructions) and a
+        <strong>user prompt</strong> (the specific thing to answer).
+      </p>
+
+      <h3>Stage 2 — drafting the audience's questions</h3>
+      <p class="guide__cap">System prompt, with the number filled in from your "queries per model" setting:</p>
+      <pre class="prompt">{{ query_prompt }}</pre>
+      <p class="guide__cap">User prompt — your brief, assembled from the form:</p>
+      <pre class="prompt prompt--user">{{ brief_context }}</pre>
+
+      <h3>Stage 4 — finding the publishers</h3>
+      <p>
+        Each publisher type is asked a genuinely different question, because the underlying
+        behaviour differs. Websites are asked with a <strong>citation</strong> framing — which
+        sources would you consult to answer this. Channels and apps are asked with an
+        <strong>attention</strong> framing — where does a person with this need actually spend
+        time. An assistant doesn't cite a mobile app to answer a factual question, so asking it
+        that way would produce nonsense.
+      </p>
+
+      {% for prompt in discovery_prompts %}
+        <p class="guide__cap">System prompt — <b>{{ prompt.label }}</b>:</p>
+        <pre class="prompt">{{ prompt.text }}</pre>
+      {% endfor %}
+
+      <p class="guide__cap">User prompt — one approved question, on its own:</p>
+      <pre class="prompt prompt--user">{{ discovery_user_prompt }}</pre>
+
+      <p>
+        Note what is <em>absent</em> from that user prompt: no brand name, no objective, no budget,
+        no earlier answers. Each call is deliberately isolated so a model can't anchor on what it
+        said last time, and so agreement between models means something.
+      </p>
+
+      <h3>The competitor rule</h3>
+      <p class="guide__cap">
+        Appended to every Stage 4 system prompt when you tick "exclude competitors" — shown here for
+        an example client, {{ example_client }}, naming {{ example_competitors }}:
+      </p>
+      <pre class="prompt">{{ competitor_clause }}</pre>
+    </section>
+
+    <!-- 5 --------------------------------------------------------------- -->
+    <section id="scoring">
+      <h2>5. How the scoring works</h2>
+
+      <p>
+        Three things happen to a publisher between a model naming it and it appearing in your
+        ranking. None of them involve maths you need a calculator for.
+      </p>
+
+      <div class="guide-cards">
+        <div class="guide-card">
+          <div class="guide-card__step">Step 1</div>
+          <h3>Each model scores what it names</h3>
+          <p>
+            Every publisher a model returns comes with a <b>0–100 relevance score</b> and a one-line
+            reason. That number is the model's own judgement of how relevant and authoritative that
+            publisher is <em>for that one question</em> — it is not traffic, reach, or price, and
+            the models are explicitly instructed never to invent those figures.
+          </p>
+        </div>
+        <div class="guide-card">
+          <div class="guide-card__step">Step 2</div>
+          <h3>Agreement: the models are compared</h3>
+          <p>
+            For each question, the models' lists are matched up. The same publisher named by
+            several models is merged into one entry, its score becomes the <b>average</b> of what
+            those models gave it, and it records how many models named it. Matching is by identity,
+            not spelling: <span class="mono">www.Vogue.in/beauty</span> and
+            <span class="mono">vogue.in</span> are one publisher.
+          </p>
+        </div>
+        <div class="guide-card">
+          <div class="guide-card__step">Step 3</div>
+          <h3>Breadth: the questions are compared</h3>
+          <p>
+            Then the per-question lists merge into one. A publisher's <b>breadth</b> is how many of
+            your approved questions surfaced it at all, and its final score is the average of its
+            per-question scores. Breadth is the strongest signal in the system.
+          </p>
+        </div>
+      </div>
+
+      <h3>The ranking rule</h3>
+      <p>Publishers are sorted by, in strict order:</p>
+      <ol class="guide-list">
+        <li><b>Breadth</b> — how many of your questions surfaced it. A publisher appearing for eight of your questions outranks one appearing for two, whatever their scores.</li>
+        <li><b>Final score</b> — the average relevance across those questions, used to break ties within the same breadth.</li>
+        <li><b>Name</b> — alphabetical, so the order is stable rather than arbitrary.</li>
+      </ol>
+      <p>
+        Breadth leads on purpose. A high score on a single narrow question means a publisher is good
+        at <em>one</em> thing; showing up again and again across the whole spread of your audience's
+        questions means it sits at the centre of the conversation. That is the one you want your
+        brand next to.
+      </p>
+
+      <h3>The breadth badge</h3>
+      <p>The High / Medium / Low badge in the results is that same breadth as a share of your approved questions:</p>
+      <div class="table-wrap">
+        <table class="table guide-table">
+          <thead><tr><th>Badge</th><th>Meaning</th><th>Example with 10 approved questions</th></tr></thead>
+          <tbody>
+            <tr><td><span class="breadth breadth--high"><span class="breadth__tick"><i></i><i></i><i></i></span>High</span></td><td>Appeared for at least {{ breadth_high_pct }}% of your questions</td><td>7 or more</td></tr>
+            <tr><td><span class="breadth breadth--medium"><span class="breadth__tick"><i></i><i></i><i></i></span>Medium</span></td><td>Appeared for at least {{ breadth_medium_pct }}%</td><td>4 to 6</td></tr>
+            <tr><td><span class="breadth breadth--low"><span class="breadth__tick"><i></i><i></i><i></i></span>Low</span></td><td>Appeared for fewer than that</td><td>1 to 3</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>A worked example</h3>
+      <p>
+        Say you approved 10 questions and three models are running. For the question
+        <em>"{{ example_query }}"</em>, two of the three models name <span class="mono">vogue.in</span>,
+        scoring it 88 and 82 — so for that question it is one entry at <b>85</b>, named by
+        <b>2 models</b>. Repeat for the other nine questions: <span class="mono">vogue.in</span> comes
+        back for eight of the ten, averaging <b>84</b>. It lands near the top with breadth 8,
+        a <b>High</b> badge, and a final score of 84. A niche blog that scored a brilliant 95 on one
+        question and never reappeared sits far below it — one strong opinion, no corroboration.
+      </p>
+
+      <div class="alert alert--info">
+        <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 8v4M9 5.5h.01"/></svg>
+        <div class="alert__body">
+          <div class="alert__title">If a model fails, the run continues</div>
+          <div class="alert__text">
+            Models time out and rate-limit. A failed call is recorded and the ranking is simply built
+            from the models that did answer — the campaign is marked <em>completed with warnings</em>
+            so you know the consensus was thinner than usual. Only a total failure fails the campaign.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 --------------------------------------------------------------- -->
+    <section id="competitors">
+      <h2>6. Keeping competitors out</h2>
+
+      <p>
+        This list is a buying list. A rival brand will not sell you space on its own website, channel
+        or app, so a competitor sitting in your results isn't just awkward — it is a row nobody can
+        act on. Ticking <b>exclude competitors</b> on the form deals with that in two passes, because
+        one is not reliable on its own.
+      </p>
+
+      <ol class="guide-list">
+        <li>
+          <b>The models are told.</b> The rule shown in section 4 is appended to every discovery
+          prompt, naming your brand and any competitors you list.
+        </li>
+        <li>
+          <b>The results are filtered anyway.</b> AI models follow negative instructions unevenly,
+          so anything that still comes back matching a competitor you named is removed before the
+          ranking is built. This pass is deterministic — it does not depend on a model's cooperation.
+        </li>
+      </ol>
+
+      <p>
+        The filter matches on brand identity rather than exact spelling, so naming
+        <em>Kama Ayurveda</em> also catches <em>Kama Ayurveda India</em> and
+        <span class="mono">kamaayurveda.com</span>.
+      </p>
+
+      <div class="alert alert--warning">
+        <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2.5L16.5 15.5H1.5L9 2.5Z"/><path d="M9 7.5v3.5M9 13.5h.01"/></svg>
+        <div class="alert__body">
+          <div class="alert__title">A retailer that stocks a rival is not a competitor</div>
+          <div class="alert__text">
+            The rule targets <em>brand-owned</em> properties only. Marketplaces, retailers, magazines
+            and creators that cover many brands are exactly where you want to advertise, even though
+            they carry competitors' products — so they are deliberately kept. Name only the brands you
+            compete with, not the places that sell them.
+          </div>
+        </div>
+      </div>
+
+      <p>
+        Naming competitors is optional but makes a large difference: with names, the filter is exact;
+        without them, you are relying on the models' own read of who competes with you. Leaving the
+        box unticked keeps everything, which is the right choice when you are researching a category
+        rather than planning a buy.
+      </p>
+    </section>
+
+    <!-- 7 --------------------------------------------------------------- -->
+    <section id="types">
+      <h2>7. Websites, YouTube channels and apps</h2>
+
+      <p>
+        The three publisher types are not three flavours of the same search. Each has its own
+        prompt, its own idea of what makes two results "the same thing", and its own results tab.
+      </p>
+
+      <div class="table-wrap">
+        <table class="table guide-table">
+          <thead><tr><th style="min-width:130px">Type</th><th>The question asked</th><th>How duplicates are matched</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>Websites</b></td>
+              <td>"To answer this, which websites or publishers would you consult or cite?"</td>
+              <td>By domain, ignoring <span class="mono">https://</span>, <span class="mono">www.</span> and any path.</td>
+            </tr>
+            <tr>
+              <td><b>YouTube channels</b></td>
+              <td>"Whose content is a person with this need genuinely likely to watch?"</td>
+              <td>By channel handle, so a full URL and a bare <span class="mono">@handle</span> collapse into one.</td>
+            </tr>
+            <tr>
+              <td><b>Applications</b></td>
+              <td>"Which apps is a person with this need likely to have installed and use?"</td>
+              <td>By app name — models return different store listings for iOS, Android and different regions, so the name is the only stable identity. Platform is kept as a detail.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Everything after that point — agreement, breadth, ranking, the final trim — is identical
+        across the three. Each type gets its own separate ranking, so a website never competes for
+        position with an app.
+      </p>
+    </section>
+
+    <!-- 8 --------------------------------------------------------------- -->
+    <section id="reading">
+      <h2>8. Reading the results</h2>
+
+      <p>Each row in the finished table carries its own evidence:</p>
+      <div class="table-wrap">
+        <table class="table guide-table">
+          <thead><tr><th style="min-width:140px">Column</th><th>What it tells you</th></tr></thead>
+          <tbody>
+            <tr><td><b>Final score</b></td><td>Average relevance, 0–100, across every question that surfaced this publisher.</td></tr>
+            <tr><td><b>Queries</b> <span class="motif-legend__swatch motif-legend__swatch--breadth" style="display:inline-block;vertical-align:middle"></span></td><td>Breadth — how many of your approved questions surfaced it. The primary sort.</td></tr>
+            <tr><td><b>Models</b> <span class="motif-legend__swatch motif-legend__swatch--agreement" style="display:inline-block;vertical-align:middle"></span></td><td>Agreement — the most models that named it within a single question.</td></tr>
+            <tr><td><b>Breadth badge</b></td><td>High / Medium / Low, the same breadth read as a proportion.</td></tr>
+            <tr><td><b>Main reason</b></td><td>The short justification from whichever model rated it highest.</td></tr>
+            <tr><td><b>Details</b></td><td>Opens the full drill-down: every question that surfaced it and every model that named it. This is what makes a recommendation defensible in a room.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        <b>Export CSV</b> gives you the whole ranking with all of the above for spreadsheets and
+        decks. A practical way to read the table: treat the High-breadth rows as your core buy, the
+        Medium rows as the expansion list, and the Low rows as leads worth a look rather than
+        conclusions.
+      </p>
+    </section>
+
+    <!-- 9 --------------------------------------------------------------- -->
+    <section id="limits">
+      <h2>9. What this is not</h2>
+
+      <p>
+        {{ app_name }} is a research assistant, not an oracle, and it is more useful if you know
+        exactly where its authority ends.
+      </p>
+
+      <ul class="guide-list">
+        <li><b>It is a prediction, not a measurement.</b> The output reflects what these models said at the time you ran it. It is not a guarantee of citation, traffic, or that an assistant will surface a given site tomorrow.</li>
+        <li><b>It knows nothing about availability or price.</b> No inventory, no rate cards, no reach figures. The models are instructed never to invent them, and none appear in the output.</li>
+        <li><b>Brand safety still needs a human.</b> A publisher can be highly relevant and entirely wrong for your brand. Nothing here replaces that judgement.</li>
+        <li><b>Model knowledge has a horizon.</b> A publisher launched very recently may be under-represented simply because the models haven't caught up.</li>
+        <li><b>Your questions bound the answer.</b> The system can only find publishers relevant to the questions you approved. Deleting a whole line of enquiry at the review step removes everything it would have surfaced — which is precisely why that step is yours.</li>
+      </ul>
+
+      <p class="mb-5">
+        Used well, it is a very well-read assistant that surfaces where the conversation is happening
+        in minutes rather than weeks, with the reasoning attached — and a human making the call.
+      </p>
+
+      {% if demo_mode %}
+        <div class="alert alert--info">
+          <svg class="alert__ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 8v4M9 5.5h.01"/></svg>
+          <div class="alert__body">
+            <div class="alert__title">This instance is running in demo mode</div>
+            <div class="alert__text">
+              The whole flow works, but the answers are realistic sample data rather than live AI
+              calls — useful for walkthroughs and training at no cost. Everything described on this
+              page is what happens once real models are connected.
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </section>
+
+    <!-- 10 -------------------------------------------------------------- -->
+    <section id="glossary">
+      <h2>10. Glossary</h2>
+      <div class="table-wrap">
+        <table class="table guide-table">
+          <thead><tr><th style="min-width:150px">Term</th><th>Plain meaning</th></tr></thead>
+          <tbody>
+            <tr><td><b>Brief</b></td><td>The written description of the campaign you enter to start.</td></tr>
+            <tr><td><b>Model / provider</b></td><td>An AI engine {{ app_name }} sends questions to. Several run side by side.</td></tr>
+            <tr><td><b>Audience query</b></td><td>A realistic question your customer might type into an AI assistant.</td></tr>
+            <tr><td><b>System prompt</b></td><td>The standing instructions a model is given before the specific question.</td></tr>
+            <tr><td><b>Publisher</b></td><td>Anywhere an ad could run — a website, a YouTube channel or an app.</td></tr>
+            <tr><td><b>Agreement</b></td><td>How many models independently named the same publisher for one question.</td></tr>
+            <tr><td><b>Breadth</b></td><td>How many of your approved questions surfaced a publisher. The primary ranking signal.</td></tr>
+            <tr><td><b>Consensus</b></td><td>Merging several models' answers into what they concur on.</td></tr>
+            <tr><td><b>Final score</b></td><td>Average 0–100 relevance for a publisher across the questions that surfaced it.</td></tr>
+            <tr><td><b>Demo mode</b></td><td>A no-cost mode that runs the full flow on realistic sample data.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="guide-cta">
+      <div>
+        <h3 style="margin-bottom:4px">Ready to try it?</h3>
+        <p class="text-sm muted" style="margin:0">Start with a brief — you'll see the drafted questions before anything else runs.</p>
+      </div>
+      <a class="btn btn--primary" href="/campaigns/new">New campaign
+        <svg class="btn__ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      </a>
+    </div>
+
+    <div class="disclaimer" style="max-width:80ch">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5M8 11h.01"/></svg>
+      <span>{{ app_name }} is an internal media-planning aid. Its recommendations are AI-generated and advisory, and must be validated by a qualified marketing professional before any spend is committed.</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -16,6 +16,7 @@ from app.entities.models import (
 from app.handlers.campaign_handler import decode_provider_details
 from app.repositories import campaign_repository as repo
 from app.services.campaign_service import build_csv
+from app.services.progress import DISCOVERY_STEPS, build_view
 from app.templating import templates
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ async def campaign_detail(request: Request, campaign_id: int, db: Session = Depe
         {
             "campaign": campaign,
             "processing": processing,
+            "progress": build_view(campaign, DISCOVERY_STEPS) if processing else None,
             "rows": rows,
             "tabs": tabs,
             "successful_providers": successful,

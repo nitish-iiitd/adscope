@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import stepper %}
+{% from "_macros.html" import stepper, progress_panel %}
 {% block title %}Review queries &middot; {{ app_name }}{% endblock %}
 
 {# Poll only while service-1 is still generating (condition must live inside the block). #}
-{% block head %}{% if generating %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block head %}{% if generating %}<meta http-equiv="refresh" content="{{ poll_seconds }}">{% endif %}{% endblock %}
 
 {% block content %}
 <div class="breadcrumb"><a href="/">Campaigns</a><span class="breadcrumb__sep">/</span><span class="breadcrumb__cur">{{ campaign.campaign_name }}</span></div>
@@ -19,8 +19,9 @@
         </div>
         <h2 class="loading-state__title">Generating audience queries</h2>
         <p class="loading-state__text">AdScope is asking several AI models what your audience would ask their own assistant about this brief, then merging the questions. You'll review and edit the drafts next.</p>
-        <span class="loading-state__poll"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Auto-refreshing · this page updates on its own</span>
+        <span class="loading-state__poll"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Auto-refreshing every {{ poll_seconds }}s</span>
       </div>
+      {{ progress_panel(progress) }}
     </div>
   </div>
 {% else %}

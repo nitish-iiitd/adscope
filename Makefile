@@ -1,4 +1,4 @@
-.PHONY: install run test lint format docker-up docker-down
+.PHONY: install run test lint format up down
 
 # Use the project's virtualenv interpreter when present, so bare `uvicorn` /
 # `pytest` / `ruff` on PATH (e.g. from another venv) can't shadow the project deps.
@@ -23,8 +23,8 @@ format:
 	$(PY) -m ruff check --fix .
 	$(PY) -m ruff format .
 
-docker-up:
-	docker compose up --build
+up:
+	podman compose up --build
 
-docker-down:
-	docker compose down
+down:
+	podman compose down

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.entities.models import (
@@ -17,6 +17,7 @@ from app.entities.models import (
 )
 from app.schemas.campaign import CampaignCreate, ProviderCallResult
 from app.services.consensus_service import ConsensusEntry
+from app.services.progress import ProgressUpdate
 from app.services.query_service import QueryDraft
 from app.services.site_discovery_service import QueryResultRecord
 
@@ -30,8 +31,12 @@ def create_campaign(db: Session, data: CampaignCreate) -> Campaign:
         objective=data.objective,
         budget=data.budget,
         publisher_types=",".join(data.publisher_types),
+        exclude_competitors=data.exclude_competitors,
+        competitors=data.competitors,
         queries_per_provider=data.queries_per_provider,
         max_websites_per_query=data.max_websites_per_query,
+        max_youtube_per_query=data.max_youtube_per_query,
+        max_apps_per_query=data.max_apps_per_query,
         max_final_websites=data.max_final_websites,
         status=CampaignStatus.PROCESSING,
         phase=CampaignPhase.GENERATING_QUERIES,
@@ -205,7 +210,32 @@ def get_ranked_recommendations(db: Session, campaign_id: int) -> list[FinalRecom
     return list(db.execute(stmt).scalars())
 
 
-# --- Phase / status transitions ---------------------------------------------
+# --- Progress / phase / status transitions ----------------------------------
+
+
+def set_progress(db: Session, campaign_id: int, update_: ProgressUpdate) -> None:
+    """Record live stage progress for the polling pages.
+
+    Issued as a direct UPDATE rather than through the loaded Campaign object:
+    the background runner holds that object across the whole stage, and progress
+    must not disturb it.
+    """
+    db.execute(
+        update(Campaign)
+        .where(Campaign.id == campaign_id)
+        .values(
+            progress_step=update_.step,
+            progress_current=update_.current,
+            progress_total=update_.total,
+            progress_message=update_.message,
+        )
+    )
+    db.commit()
+
+
+def reset_progress(db: Session, campaign_id: int, message: str) -> None:
+    """Put a campaign back at step 1 as it enters a new background stage."""
+    set_progress(db, campaign_id, ProgressUpdate(step=1, current=0, total=0, message=message))
 
 
 def set_phase(

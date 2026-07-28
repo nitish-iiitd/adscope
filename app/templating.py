@@ -12,9 +12,14 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 settings = get_settings()
 templates.env.globals["app_name"] = settings.app_name
 templates.env.globals["demo_mode"] = settings.demo_mode
-# Default pipeline sizes, shown as placeholders on the New Campaign form.
+# Default pipeline sizes, shown as placeholders on the New Campaign form and
+# quoted on the How it works page.
 templates.env.globals["defaults"] = {
     "queries_per_provider": settings.queries_per_provider,
     "max_websites_per_query": settings.max_websites_per_query,
+    "max_youtube_per_query": settings.max_youtube_per_query,
+    "max_apps_per_query": settings.max_apps_per_query,
     "max_final_websites": settings.max_final_websites,
 }
+# How often the two waiting pages re-request themselves.
+templates.env.globals["poll_seconds"] = settings.poll_interval_seconds
